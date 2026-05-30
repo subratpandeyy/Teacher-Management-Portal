@@ -1,0 +1,8 @@
+# Minimal Supabase CLI config — run migrations with: supabase db push
+project_id = "teacher-portal"
+
+[api]
+enabled = true
+
+[db]
+major_version = 15
