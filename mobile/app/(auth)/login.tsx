@@ -60,7 +60,7 @@ export default function LoginScreen() {
         contentContainerClassName="flex-grow justify-center px-6 py-12"
         keyboardShouldPersistTaps="handled"
       >
-        <Text className="text-3xl font-bold text-slate-900">Teacher Portal</Text>
+        <Text className="text-3xl font-bold text-slate-900">GenieClasses Teacher Portal</Text>
         <Text className="mt-2 text-slate-600">
           {isAdminHint
             ? 'Admins should use the web admin panel. Teachers sign in below.'

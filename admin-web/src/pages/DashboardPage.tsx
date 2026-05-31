@@ -23,7 +23,7 @@ export function DashboardPage({ onSignOut }: { onSignOut: () => void }) {
     <div className="flex min-h-screen flex-col">
       <header className="flex items-center justify-between border-b border-slate-200 bg-white px-6 py-4">
         <div>
-          <h1 className="text-xl font-bold">Teacher Portal Admin</h1>
+          <h1 className="text-xl font-bold">GenieClasses Teacher Portal Admin</h1>
           <p className="text-sm text-slate-500">
             Data is always scoped to the selected teacher — no cross-teacher views.
           </p>

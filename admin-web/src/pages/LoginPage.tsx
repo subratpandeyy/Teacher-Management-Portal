@@ -45,7 +45,7 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
         onSubmit={handleSubmit}
         className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-8 shadow-sm"
       >
-        <h1 className="text-2xl font-bold">Admin Panel</h1>
+        <h1 className="text-2xl font-bold">GenieClasses Admin Panel</h1>
         <p className="mt-1 text-sm text-slate-600">Sign in with an admin account.</p>
         {error ? (
           <p className="mt-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
