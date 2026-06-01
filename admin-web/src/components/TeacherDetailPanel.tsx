@@ -10,9 +10,12 @@ import {
   softDeleteChatMessage,
   updateChatMessage,
   uploadChatAttachment,
-  getSignedUrl,
+  fetchTeacherUploadsForAdmin,
   shareDocumentInChat,
+  getSignedUrl,
 } from '../lib/features';
+import { openDocumentInBrowser } from '../lib/openDocument';
+import { STORAGE_BUCKETS } from '../../../shared/storage';
 
 type Tab = 'chat' | 'documents' | 'availability';
 
@@ -59,8 +62,19 @@ function DocumentsTab({ teacherId }: { teacherId: string }) {
       id: string;
       title: string;
       storage_path: string;
+      storage_bucket?: string | null;
       mime_type?: string | null;
       assigned_at?: string;
+    }[]
+  >([]);
+  const [fromTeacher, setFromTeacher] = useState<
+    {
+      id: string;
+      title: string;
+      storage_path: string;
+      storage_bucket?: string | null;
+      mime_type?: string | null;
+      created_at?: string;
     }[]
   >([]);
   const [error, setError] = useState('');
@@ -71,7 +85,7 @@ function DocumentsTab({ teacherId }: { teacherId: string }) {
       else {
         const mapped = (data ?? []).flatMap((row: Record<string, unknown>) => {
           const doc = row.documents as
-            | { id: string; title: string; storage_path: string }
+            | { id: string; title: string; storage_path: string; storage_bucket?: string; mime_type?: string }
             | { id: string; title: string; storage_path: string }[]
             | null;
           const d = Array.isArray(doc) ? doc[0] : doc;
@@ -80,6 +94,7 @@ function DocumentsTab({ teacherId }: { teacherId: string }) {
             id: d.id,
             title: d.title,
             storage_path: d.storage_path,
+            storage_bucket: (d as { storage_bucket?: string }).storage_bucket ?? null,
             mime_type: (d as { mime_type?: string }).mime_type ?? null,
             assigned_at: row.assigned_at as string | undefined,
           }];
@@ -87,20 +102,58 @@ function DocumentsTab({ teacherId }: { teacherId: string }) {
         setFromAdmin(mapped);
       }
     });
+
+    fetchTeacherUploadsForAdmin(teacherId).then(({ data, error: err }) => {
+      if (err) setError(err.message);
+      else {
+        setFromTeacher(
+          ((data ?? []) as Record<string, unknown>[]).map((row) => ({
+            id: String(row.id),
+            title: String(row.title ?? row.file_name),
+            storage_path: String(row.storage_path),
+            storage_bucket: (row.storage_bucket as string | null) ?? null,
+            mime_type: (row.mime_type as string | null) ?? null,
+            created_at: row.created_at as string | undefined,
+          }))
+        );
+      }
+    });
   }, [teacherId]);
 
-  async function openDoc(path: string) {
-    const { data, error: err } = await getSignedUrl(path);
-    if (err || !data?.signedUrl) {
-      setError(err?.message ?? 'Failed to sign URL');
-      return;
-    }
-    window.open(data.signedUrl, '_blank', 'noopener,noreferrer');
+  async function openDoc(doc: {
+    storage_path: string;
+    storage_bucket?: string | null;
+    mime_type?: string | null;
+  }) {
+    const result = await openDocumentInBrowser(doc);
+    if (!result.ok) setError(result.error);
   }
 
   return (
     <div className="space-y-6">
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
+
+      <section>
+        <h3 className="font-semibold">Uploaded by teacher</h3>
+        <ul className="mt-2 space-y-2">
+          {fromTeacher.length === 0 ? (
+            <li className="text-sm text-slate-500">No uploads from this teacher yet.</li>
+          ) : (
+            fromTeacher.map((d) => (
+              <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white p-3">
+                <span>{d.title}</span>
+                <button
+                  type="button"
+                  onClick={() => openDoc(d)}
+                  className="text-sm text-blue-600"
+                >
+                  Open
+                </button>
+              </li>
+            ))
+          )}
+        </ul>
+      </section>
 
       <section>
         <h3 className="font-semibold">Shared with teacher</h3>
@@ -119,8 +172,8 @@ function DocumentsTab({ teacherId }: { teacherId: string }) {
                   >
                     Send in chat
                   </button>
-                  <button type="button" onClick={() => openDoc(d.storage_path)} className="text-sm text-blue-600">
-                    Download
+                  <button type="button" onClick={() => openDoc(d)} className="text-sm text-blue-600">
+                    Open
                   </button>
                 </span>
               </li>
@@ -306,7 +359,7 @@ function ChatTab({ teacherId }: { teacherId: string }) {
                 type="button"
                 className="text-blue-600 text-xs"
                 onClick={() => {
-                  void getSignedUrl(m.attachment_url!).then(({ data }) => {
+                  void getSignedUrl(m.attachment_url!, STORAGE_BUCKETS.chatFiles).then(({ data }) => {
                     if (data?.signedUrl) window.open(data.signedUrl);
                   });
                 }}

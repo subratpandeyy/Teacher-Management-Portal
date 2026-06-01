@@ -61,8 +61,9 @@ No schema change — existing RLS + `resolve_teacher_ids` retained. Teachers use
 
 | Issue | Fix |
 |-------|-----|
-| Expo Go Android `content://` URIs | `storageUpload.ts` uses `expo-file-system` `File.bytes()` (unchanged, verified) |
-| DOCX not pickable | Extended `documentPicker` MIME types |
+| `copyAsync` / `readAsStringAsync` failed on DocumentPicker cache URIs (Expo Go Android) | `File.pickFileAsync` + `file.arrayBuffer()` → `upload()`; no legacy FileSystem copy/read |
+| Teacher uploads failed while admin worked | Unified `[upload]` pipeline in `storageService.ts`; see `UPLOAD_SYSTEM.md` |
+| DOCX not pickable | MIME types on `File.pickFileAsync` in `documentPicker.ts` |
 
 ## Files changed (summary)
 

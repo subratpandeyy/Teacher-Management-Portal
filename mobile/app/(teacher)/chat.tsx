@@ -132,12 +132,7 @@ export default function ChatScreen() {
     setAttaching(true);
     setError('');
 
-    const uploaded = await uploadChatAttachment(conversation.id, teacherId, {
-      uri: picked.asset.uri,
-      name: picked.asset.name,
-      mimeType: picked.asset.mimeType,
-      size: picked.asset.size,
-    });
+    const uploaded = await uploadChatAttachment(conversation.id, teacherId, picked.asset);
 
     if (uploaded.error || !uploaded.path) {
       setAttaching(false);

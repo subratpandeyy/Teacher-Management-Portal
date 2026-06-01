@@ -1,67 +1,65 @@
-import * as DocumentPicker from 'expo-document-picker';
-import type { DocumentPickerAsset } from 'expo-document-picker';
+import { File } from 'expo-file-system';
+import { UPLOAD_LOG } from '../../shared/upload';
 
-/**
- * Picks a document for upload.
- *
- * `copyToCacheDirectory: false` keeps the system content URI (content:// on Android).
- * The Expo Go cache copy (file://…/DocumentPicker/…) is often not readable by
- * FileSystem.copyAsync / legacy APIs; expo-file-system `File.bytes()` reads
- * content:// via ContentResolver reliably.
- */
-const PICKER_OPTIONS: DocumentPicker.DocumentPickerOptions = {
-  type: [
-    'application/pdf',
-    'image/*',
-    'text/plain',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-    'application/msword',
-    '*/*',
-  ],
-  copyToCacheDirectory: false,
-  multiple: false,
-};
+const PICKER_MIME_TYPES = [
+  'application/pdf',
+  'image/*',
+  'text/plain',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/msword',
+  '*/*',
+];
 
-export type PickedDocument = {
+export type PickedFile = {
+  /** expo-file-system File (readable via arrayBuffer). */
+  file: File;
   uri: string;
   name: string;
   mimeType: string;
   size?: number;
-  file?: DocumentPickerAsset['file'];
 };
 
+/**
+ * Pick a document using Expo SDK 56 File.pickFileAsync (no expo-document-picker cache URIs).
+ */
 export async function pickDocumentForUpload(): Promise<
-  { ok: true; asset: PickedDocument } | { ok: false; canceled: true } | { ok: false; error: string }
+  { ok: true; asset: PickedFile } | { ok: false; canceled: true } | { ok: false; error: string }
 > {
-  console.log('[DocumentPicker] getDocumentAsync options:', PICKER_OPTIONS);
+  console.log(UPLOAD_LOG, 'opening file picker');
 
-  const result = await DocumentPicker.getDocumentAsync(PICKER_OPTIONS);
+  const result = await File.pickFileAsync({
+    mimeTypes: PICKER_MIME_TYPES,
+  });
 
-  if (result.canceled || !result.assets?.[0]) {
-    console.log('[DocumentPicker] canceled');
+  if (result.canceled || !result.result) {
+    console.log(UPLOAD_LOG, 'picker canceled');
     return { ok: false, canceled: true };
   }
 
-  const asset = result.assets[0];
+  const file = result.result;
+  const name = file.name || `document-${Date.now()}.pdf`;
+  const mimeType = file.type || 'application/octet-stream';
 
-  console.log('[DocumentPicker] asset.uri:', asset.uri);
-  console.log('[DocumentPicker] asset.name:', asset.name);
-  console.log('[DocumentPicker] asset.mimeType:', asset.mimeType);
-  console.log('[DocumentPicker] asset.size:', asset.size);
-  console.log('[DocumentPicker] asset.file:', asset.file ?? '(native — no web File object)');
+  console.log(UPLOAD_LOG, 'file selected', {
+    uri: file.uri,
+    name,
+    mimeType,
+    size: file.size,
+    exists: file.exists,
+  });
 
-  if (!asset.uri) {
-    return { ok: false, error: 'Document picker returned no URI.' };
+  if (!file.exists) {
+    return { ok: false, error: 'Selected file is not accessible. Try again.' };
   }
 
   return {
     ok: true,
     asset: {
-      uri: asset.uri,
-      name: asset.name ?? `document-${Date.now()}.pdf`,
-      mimeType: asset.mimeType ?? 'application/pdf',
-      size: asset.size,
-      file: asset.file,
+      file,
+      uri: file.uri,
+      name,
+      mimeType,
+      size: file.size,
     },
   };
 }

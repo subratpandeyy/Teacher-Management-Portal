@@ -1,11 +1,16 @@
 import { supabase } from './supabase';
+import { generateUuid } from './generateUuid';
 import {
   createSignedStorageUrl,
+  removeStorageFile,
   sanitizeStorageFileName,
   STORAGE_BUCKETS,
   uploadFile,
-  type LocalFile,
-} from './storageUpload';
+  type StorageBucket,
+} from './storageService';
+import type { PickedFile } from './documentPicker';
+import { UPLOAD_LOG } from '../../shared/upload';
+import { openDocumentWithLinking } from './openDocument';
 import type {
   TeacherBroadcast,
   BroadcastFeedback,
@@ -95,13 +100,87 @@ export async function fetchDocumentsFromAdmin(_teacherId: string) {
   return supabase.rpc('teacher_assigned_documents');
 }
 
-export async function getSignedDocumentUrl(storagePath: string, expiresIn = 3600) {
-  const { data, error } = await createSignedStorageUrl(
-    storagePath,
-    STORAGE_BUCKETS.documents,
-    expiresIn
-  );
-  return { url: data?.signedUrl ?? null, error };
+export async function openAssignedDocument(doc: {
+  storage_path: string;
+  storage_bucket?: string | null;
+  mime_type?: string | null;
+}) {
+  const result = await openDocumentWithLinking(doc);
+  return { url: result.ok ? result.signedUrl : null, error: result.ok ? null : { message: result.error } };
+}
+
+export async function fetchMyUploadsToAdmin(teacherId: string) {
+  return supabase
+    .from('documents')
+    .select('id, title, file_name, storage_path, storage_bucket, mime_type, created_at')
+    .eq('teacher_id', teacherId)
+    .eq('direction', 'teacher_to_admin')
+    .order('created_at', { ascending: false });
+}
+
+export async function uploadTeacherDocumentToAdmin(teacherId: string, picked: PickedFile) {
+  const docId = generateUuid();
+  const safeName = sanitizeStorageFileName(picked.name);
+  const storagePath = `${teacherId}/inbound/${docId}/${safeName}`;
+
+  const uploaded = await uploadFile({
+    bucket: STORAGE_BUCKETS.documents,
+    path: storagePath,
+    file: picked.file,
+    fileName: picked.name,
+    contentType: picked.mimeType,
+  });
+
+  if (!uploaded.ok) {
+    console.error(UPLOAD_LOG, 'upload failed', uploaded.error);
+    return { error: uploaded.error };
+  }
+
+  const { error: insertErr } = await supabase.from('documents').insert({
+    id: docId,
+    title: picked.name,
+    file_name: picked.name,
+    storage_path: storagePath,
+    storage_bucket: STORAGE_BUCKETS.documents,
+    mime_type: picked.mimeType ?? null,
+    teacher_id: teacherId,
+    uploaded_by: teacherId,
+    direction: 'teacher_to_admin',
+  });
+
+  if (insertErr) {
+    console.error(UPLOAD_LOG, 'upload failed', insertErr.message);
+    await removeStorageFile(STORAGE_BUCKETS.documents, storagePath);
+    return { error: insertErr.message };
+  }
+
+  console.log(UPLOAD_LOG, 'database insert success', docId);
+  return { error: null, documentId: docId, signedUrl: uploaded.signedUrl };
+}
+
+export async function deleteTeacherDocument(teacherId: string, documentId: string) {
+  const { data: row, error: fetchErr } = await supabase
+    .from('documents')
+    .select('storage_path, storage_bucket')
+    .eq('id', documentId)
+    .eq('teacher_id', teacherId)
+    .eq('direction', 'teacher_to_admin')
+    .single();
+
+  if (fetchErr || !row) {
+    return { error: fetchErr?.message ?? 'Document not found' };
+  }
+
+  const bucket = (row.storage_bucket as StorageBucket) ?? STORAGE_BUCKETS.documents;
+  await removeStorageFile(bucket, row.storage_path);
+
+  const { error: delErr } = await supabase
+    .from('documents')
+    .delete()
+    .eq('id', documentId)
+    .eq('teacher_id', teacherId);
+
+  return { error: delErr?.message ?? null };
 }
 
 export async function getSignedBroadcastAttachmentUrl(storagePath: string, expiresIn = 3600) {
@@ -160,7 +239,7 @@ export async function fetchChatMessages(conversationId: string, teacherId: strin
 export async function uploadChatAttachment(
   conversationId: string,
   teacherId: string,
-  file: LocalFile
+  picked: PickedFile
 ) {
   const conv = await supabase
     .from('conversations')
@@ -171,16 +250,16 @@ export async function uploadChatAttachment(
 
   if (conv.error) return { error: conv.error.message, path: null as string | null, name: null as string | null };
 
-  const safeName = sanitizeStorageFileName(file.name);
+  const safeName = sanitizeStorageFileName(picked.name);
   const segment = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const storagePath = `${conversationId}/${segment}/${safeName}`;
 
   const uploaded = await uploadFile({
     bucket: STORAGE_BUCKETS.chatFiles,
     path: storagePath,
-    fileUri: file.uri,
-    fileName: file.name,
-    contentType: file.mimeType,
+    file: picked.file,
+    fileName: picked.name,
+    contentType: picked.mimeType,
   });
 
   if (!uploaded.ok) {
@@ -190,8 +269,8 @@ export async function uploadChatAttachment(
   return {
     error: null,
     path: uploaded.storagePath,
-    name: file.name,
-    mimeType: file.mimeType ?? null,
+    name: picked.name,
+    mimeType: picked.mimeType ?? null,
   };
 }
 

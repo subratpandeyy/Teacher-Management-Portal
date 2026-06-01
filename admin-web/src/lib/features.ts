@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { generateUuid } from '../../../shared/uuid';
 import {
   createSignedStorageUrl,
   removeStorageFile,
@@ -6,6 +7,7 @@ import {
   STORAGE_BUCKETS,
   uploadFile,
 } from './storageUpload';
+import { UPLOAD_LOG } from '../../../shared/upload';
 import type {
   BroadcastAttachment,
   BroadcastFeedback,
@@ -119,7 +121,7 @@ export async function createBroadcast(opts: {
 }) {
   await assertAdmin();
   const t = resolveBroadcastRpcTarget(opts);
-  const broadcastId = opts.broadcastId ?? crypto.randomUUID();
+  const broadcastId = opts.broadcastId ?? generateUuid();
 
   const { data, error } = await supabase.rpc('admin_create_broadcast', {
     p_title: opts.title,
@@ -172,6 +174,7 @@ export async function registerBroadcastAttachmentMetadata(
   });
 
   if (regErr) return { error: regErr.message };
+  console.log(UPLOAD_LOG, 'database insert success', 'broadcast_attachment', broadcastId);
   return { error: null };
 }
 
@@ -189,7 +192,7 @@ export async function sendBroadcastWithOptionalAttachment(opts: {
   groupIds?: string[];
   attachment?: File | null;
 }) {
-  const broadcastId = crypto.randomUUID();
+  const broadcastId = generateUuid();
   let uploadedPath: string | null = null;
 
   if (opts.attachment) {
@@ -320,7 +323,7 @@ export async function adminUploadDocument(
   }
 ) {
   const adminId = await assertAdmin();
-  const docId = crypto.randomUUID();
+  const docId = generateUuid();
   const safeName = sanitizeStorageFileName(file.name);
   const storagePath = `${docId}/${safeName}`;
 
@@ -380,6 +383,7 @@ export async function adminUploadDocument(
     return { error: 'No teachers matched the selected target' };
   }
 
+  console.log(UPLOAD_LOG, 'database insert success', docId);
   return { error: null, documentId: doc.id, signedUrl: uploaded.signedUrl };
 }
 
@@ -387,15 +391,31 @@ export async function fetchDocumentDeliveries() {
   await assertAdmin();
   return supabase
     .from('document_recipients')
-    .select('id, assigned_at, delivered_at, teacher_id, profiles:teacher_id(display_name), documents(id, title, file_name, target_type, created_at)')
+    .select(
+      'id, assigned_at, delivered_at, teacher_id, profiles:teacher_id(display_name), documents(id, title, file_name, storage_path, storage_bucket, mime_type, target_type, created_at)'
+    )
     .order('assigned_at', { ascending: false });
+}
+
+export async function fetchTeacherUploadsForAdmin(teacherId: string) {
+  await assertAdmin();
+  return supabase.rpc('teacher_documents_for_admin', { p_teacher_id: teacherId });
+}
+
+export async function fetchAllTeacherUploadsForAdmin() {
+  await assertAdmin();
+  return supabase
+    .from('documents')
+    .select('id, title, file_name, storage_path, storage_bucket, mime_type, created_at, teacher_id, profiles:teacher_id(display_name)')
+    .eq('direction', 'teacher_to_admin')
+    .order('created_at', { ascending: false });
 }
 
 export async function fetchAdminDocumentsForTeacher(teacherId: string) {
   await assertAdmin();
   return supabase
     .from('document_recipients')
-    .select('assigned_at, documents(id, title, file_name, storage_path, mime_type, created_at)')
+    .select('assigned_at, documents(id, title, file_name, storage_path, storage_bucket, mime_type, created_at)')
     .eq('teacher_id', teacherId)
     .order('assigned_at', { ascending: false });
 }
@@ -514,7 +534,7 @@ export async function softDeleteChatMessage(messageId: string) {
 export async function uploadChatAttachment(conversationId: string, file: File) {
   await assertAdmin();
   const safeName = sanitizeStorageFileName(file.name);
-  const path = `${conversationId}/${crypto.randomUUID()}/${safeName}`;
+  const path = `${conversationId}/${generateUuid()}/${safeName}`;
   const uploaded = await uploadFile({
     bucket: STORAGE_BUCKETS.chatFiles,
     path,
