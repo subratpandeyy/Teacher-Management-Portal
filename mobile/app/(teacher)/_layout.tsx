@@ -34,27 +34,10 @@ export default function TeacherLayout() {
         tabBarInactiveTintColor: '#64748b',
       }}
     >
-      <Tabs.Screen
-        name="inbox"
-        options={{
-          title: 'Inbox',
-          tabBarLabel: ({ focused }) => <TabLabel title="Inbox" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="documents"
-        options={{
-          title: 'Documents',
-          tabBarLabel: ({ focused }) => <TabLabel title="Docs" focused={focused} />,
-        }}
-      />
-      <Tabs.Screen
-        name="chat"
-        options={{
-          title: 'Chat',
-          tabBarLabel: ({ focused }) => <TabLabel title="Chat" focused={focused} />,
-        }}
-      />
+      <Tabs.Screen name="inbox" options={{ title: 'Messages', tabBarLabel: ({ focused }) => <TabLabel title="Inbox" focused={focused} /> }} />
+      <Tabs.Screen name="documents" options={{ title: 'Documents', tabBarLabel: ({ focused }) => <TabLabel title="Docs" focused={focused} /> }} />
+      <Tabs.Screen name="chat" options={{ title: 'Chat', tabBarLabel: ({ focused }) => <TabLabel title="Chat" focused={focused} /> }} />
+      <Tabs.Screen name="availability" options={{ title: 'Availability', tabBarLabel: ({ focused }) => <TabLabel title="Calendar" focused={focused} /> }} />
     </Tabs>
   );
 }

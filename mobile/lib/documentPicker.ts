@@ -10,7 +10,14 @@ import type { DocumentPickerAsset } from 'expo-document-picker';
  * content:// via ContentResolver reliably.
  */
 const PICKER_OPTIONS: DocumentPicker.DocumentPickerOptions = {
-  type: ['application/pdf', 'image/*', 'text/plain'],
+  type: [
+    'application/pdf',
+    'image/*',
+    'text/plain',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/msword',
+    '*/*',
+  ],
   copyToCacheDirectory: false,
   multiple: false,
 };

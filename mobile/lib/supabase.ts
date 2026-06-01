@@ -27,24 +27,6 @@ export type Profile = {
   push_token: string | null;
 };
 
-export type InboxMessage = {
-  id: string;
-  teacher_id: string;
-  subject: string;
-  body: string;
-  is_read: boolean;
-  created_at: string;
-};
-
-export type DocumentRow = {
-  id: string;
-  teacher_id: string;
-  title: string;
-  storage_path: string;
-  mime_type: string | null;
-  created_at: string;
-};
-
 export type Conversation = {
   id: string;
   teacher_id: string;

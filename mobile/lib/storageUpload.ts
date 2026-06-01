@@ -1,7 +1,11 @@
 import { File } from 'expo-file-system';
 import { supabase } from './supabase';
-
-const BUCKET = 'teacher-documents';
+import {
+  resolveStorageBucket,
+  sanitizeStorageFileName,
+  STORAGE_BUCKETS,
+  type StorageBucket,
+} from './storageBuckets';
 
 export type LocalFile = {
   uri: string;
@@ -10,122 +14,107 @@ export type LocalFile = {
   size?: number;
 };
 
-function sanitizeFileName(name: string): string {
-  const base = name.split(/[/\\]/).pop() ?? 'document';
-  const cleaned = base.replace(/[^a-zA-Z0-9._-]/g, '_');
-  return cleaned.length > 0 ? cleaned : 'document';
-}
+export type UploadFileResult =
+  | {
+      ok: true;
+      bucket: StorageBucket;
+      storagePath: string;
+      signedUrl: string | null;
+    }
+  | { ok: false; error: string };
 
-/**
- * Reads file bytes from the DocumentPicker URI using Expo SDK 56 File API.
- * Uses ContentResolver on Android (content://) — no legacy copyAsync / readAsStringAsync.
- */
-export async function readFileBytesFromUri(
+export type UploadFileOptions = {
+  bucket: StorageBucket;
+  path: string;
+  fileUri: string;
+  fileName: string;
+  contentType?: string;
+};
+
+async function readFileBytesFromUri(
   uri: string
 ): Promise<{ ok: true; bytes: Uint8Array } | { ok: false; error: string }> {
   try {
     const file = new File(uri);
-
-    console.log('[upload] read — File.uri:', file.uri);
-    console.log('[upload] read — File.exists:', file.exists);
-
     if (!file.exists) {
-      console.error('[upload] read — file does not exist at URI:', uri);
-      return {
-        ok: false,
-        error: 'Selected file is not readable. Try choosing the file again.',
-      };
+      return { ok: false, error: 'Selected file is not readable. Try choosing the file again.' };
     }
-
     const bytes = await file.bytes();
-    console.log('[upload] file read success — byteLength:', bytes.byteLength);
-
     if (bytes.byteLength === 0) {
       return { ok: false, error: 'Selected file is empty.' };
     }
-
     return { ok: true, bytes };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Failed to read file';
-    console.error('[upload] read — failed:', err);
     return { ok: false, error: message };
   }
 }
 
-async function uploadBytesToSupabase(
-  storagePath: string,
-  body: Uint8Array,
-  contentType: string
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  console.log('[upload] supabase.storage.upload', {
-    bucket: BUCKET,
-    path: storagePath,
-    contentType,
-    byteLength: body.byteLength,
-  });
-
-  const { data, error } = await supabase.storage.from(BUCKET).upload(storagePath, body, {
-    contentType,
-    upsert: false,
-  });
-
-  if (error) {
-    console.error('[upload] supabase upload failed:', error.message);
-    return { ok: false, error: error.message };
-  }
-
-  console.log('[upload] upload success:', data?.path ?? storagePath);
-  return { ok: true };
-}
-
 /**
- * Read picker URI directly → upload to Supabase (no copyAsync, no Blob, no uploadAsync).
+ * Upload via Supabase Storage API only — never insert into storage.objects manually.
  */
-export async function uploadFileToStorage(
-  storagePath: string,
-  file: LocalFile
-): Promise<{ ok: true } | { ok: false; error: string }> {
-  const contentType = file.mimeType ?? 'application/octet-stream';
-
-  console.log('[upload] starting', {
-    storagePath,
-    assetUri: file.uri,
-    name: file.name,
-    mimeType: contentType,
-    reportedSize: file.size,
-  });
-
-  const readResult = await readFileBytesFromUri(file.uri);
+export async function uploadFile(opts: UploadFileOptions): Promise<UploadFileResult> {
+  const readResult = await readFileBytesFromUri(opts.fileUri);
   if (!readResult.ok) {
     return { ok: false, error: readResult.error };
   }
 
-  try {
-    const uploadResult = await uploadBytesToSupabase(
-      storagePath,
-      readResult.bytes,
-      contentType
-    );
+  const contentType = opts.contentType ?? 'application/octet-stream';
 
-    if (!uploadResult.ok) {
-      console.error('[upload] complete — failure:', uploadResult.error);
-      return uploadResult;
-    }
+  const { error: uploadError } = await supabase.storage
+    .from(opts.bucket)
+    .upload(opts.path, readResult.bytes, {
+      contentType,
+      upsert: false,
+    });
 
-    console.log('[upload] complete — success:', storagePath);
-    return { ok: true };
-  } catch (err) {
-    const message = err instanceof Error ? err.message : 'Unknown upload error';
-    console.error('[upload] unexpected error:', err);
-    return { ok: false, error: message };
+  if (uploadError) {
+    return { ok: false, error: uploadError.message };
   }
+
+  const { data: signed, error: signError } = await supabase.storage
+    .from(opts.bucket)
+    .createSignedUrl(opts.path, 3600);
+
+  return {
+    ok: true,
+    bucket: opts.bucket,
+    storagePath: opts.path,
+    signedUrl: signError ? null : signed.signedUrl,
+  };
 }
 
-export async function removeStorageObject(storagePath: string): Promise<void> {
-  const { error } = await supabase.storage.from(BUCKET).remove([storagePath]);
+/** @deprecated Use uploadFile({ bucket, path, fileUri, fileName }) */
+export async function uploadFileToStorage(
+  storagePath: string,
+  file: LocalFile,
+  bucket: StorageBucket = STORAGE_BUCKETS.chatFiles
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  const result = await uploadFile({
+    bucket,
+    path: storagePath,
+    fileUri: file.uri,
+    fileName: file.name,
+    contentType: file.mimeType,
+  });
+  if (!result.ok) return { ok: false, error: result.error };
+  return { ok: true };
+}
+
+export async function removeStorageFile(bucket: StorageBucket, storagePath: string): Promise<void> {
+  const { error } = await supabase.storage.from(bucket).remove([storagePath]);
   if (error) {
-    console.warn('[upload] storage remove failed:', error.message);
+    console.warn('[storage] remove failed:', bucket, storagePath, error.message);
   }
 }
 
-export { sanitizeFileName };
+export async function createSignedStorageUrl(
+  storagePath: string,
+  defaultBucket: StorageBucket = STORAGE_BUCKETS.documents,
+  expiresIn = 3600
+) {
+  const bucket = resolveStorageBucket(storagePath, defaultBucket);
+  return supabase.storage.from(bucket).createSignedUrl(storagePath, expiresIn);
+}
+
+export { sanitizeStorageFileName, STORAGE_BUCKETS, resolveStorageBucket };

@@ -71,12 +71,12 @@ async function main() {
     .eq('teacher_id', b.userId);
   assert((bDocsAsA ?? []).length === 0, 'Teacher A cannot read Teacher B documents');
 
-  // 3) Inbox isolation
-  const { data: bInboxAsA } = await a.client
-    .from('inbox_messages')
+  // 3) Broadcast isolation (replaces legacy inbox_messages)
+  const { data: bBroadcastsAsA } = await a.client
+    .from('broadcast_recipients')
     .select('id')
     .eq('teacher_id', b.userId);
-  assert((bInboxAsA ?? []).length === 0, 'Teacher A cannot read Teacher B inbox');
+  assert((bBroadcastsAsA ?? []).length === 0, 'Teacher A cannot read Teacher B broadcasts');
 
   // 4) Admin RPC blocked for teachers
   const { error: rpcErr } = await a.client.rpc('admin_list_teachers');
