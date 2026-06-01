@@ -10,10 +10,10 @@ const config: ExpoConfig = {
   scheme: 'gc-teacher-portal',
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.example.gc-teacher-portal',
+    bundleIdentifier: 'com.example.gcteacherportal',
   },
   android: {
-    package: 'com.example.gc-teacher-portal',
+    package: 'com.example.gcteacherportal',
     predictiveBackGestureEnabled: false,
     intentFilters: [
       {
@@ -21,7 +21,7 @@ const config: ExpoConfig = {
         autoVerify: true,
         data: [
           {
-            scheme: 'gc-teacher-portal',
+            scheme: 'gcteacherportal',
             host: 'auth',
             pathPrefix: '/callback',
           },
@@ -41,6 +41,9 @@ const config: ExpoConfig = {
     router: {
       origin: false,
     },
+    eas: {
+      projectId: "9a792475-1301-49bc-acf5-bc56a677dc02"
+    }
   },
 };
 
