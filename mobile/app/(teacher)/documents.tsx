@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useState } from 'react';
 import {
   ActivityIndicator,
@@ -6,6 +7,7 @@ import {
   Pressable,
   RefreshControl,
   Text,
+  TextInput,
   View,
 } from 'react-native';
 import { useAuth } from '../../lib/auth';
@@ -19,6 +21,8 @@ import {
 import { pickDocumentForUpload } from '../../lib/documentPicker';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { LoadingScreen } from '../../components/LoadingScreen';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 type Doc = {
   id: string;
@@ -40,6 +44,13 @@ function normalize(row: Record<string, unknown>): Doc {
   };
 }
 
+function fileIcon(name: string): React.ComponentProps<typeof Feather>['name'] {
+  const lower = name.toLowerCase();
+  if (lower.endsWith('.pdf')) return 'file-text';
+  if (/\.(png|jpg|jpeg|gif|webp)$/.test(lower)) return 'image';
+  return 'file';
+}
+
 export default function DocumentsScreen() {
   const { user } = useAuth();
   const teacherId = user!.id;
@@ -51,6 +62,7 @@ export default function DocumentsScreen() {
   const [error, setError] = useState('');
   const [status, setStatus] = useState('');
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [search, setSearch] = useState('');
 
   const load = useCallback(async () => {
     setError('');
@@ -86,7 +98,6 @@ export default function DocumentsScreen() {
   }
 
   async function handleSelectDocument() {
-    console.log('[documents] Select Document pressed');
     setStatus('');
     setError('');
 
@@ -96,7 +107,6 @@ export default function DocumentsScreen() {
       return;
     }
 
-    console.log('[documents] file selected', picked.asset.name);
     setUploading(true);
     setStatus('Uploading…');
 
@@ -110,7 +120,6 @@ export default function DocumentsScreen() {
       return;
     }
 
-    console.log('[documents] upload complete');
     setStatus('Document sent to administrator.');
     await load();
   }
@@ -130,78 +139,110 @@ export default function DocumentsScreen() {
     ]);
   }
 
+  const q = search.trim().toLowerCase();
+  const filterDocs = (list: Doc[]) =>
+    q ? list.filter((d) => d.title.toLowerCase().includes(q)) : list;
+
   if (loading) return <LoadingScreen label="Loading documents…" />;
 
+  function DocRow({ item, showDelete }: { item: Doc; showDelete?: boolean }) {
+    return (
+      <Pressable onPress={() => openDocument(item)} className="mb-2">
+        <Card className="flex-row items-center gap-3 py-3">
+          <View className="h-10 w-10 items-center justify-center rounded-xl bg-accent-blue-50">
+            <Feather name={fileIcon(item.title)} size={20} color="#3B82F6" />
+          </View>
+          <View className="flex-1">
+            <Text className="font-semibold text-slate-900" numberOfLines={1}>
+              {item.title}
+            </Text>
+            <Text className="mt-0.5 text-xs text-slate-500">
+              {new Date(item.assigned_at ?? item.created_at ?? '').toLocaleString()}
+            </Text>
+          </View>
+          {openingId === item.id ? (
+            <ActivityIndicator color="#22C55E" />
+          ) : (
+            <Feather name="download" size={18} color="#22C55E" />
+          )}
+          {showDelete ? (
+            <Pressable onPress={() => confirmDelete(item)} className="ml-1 p-2">
+              <Feather name="trash-2" size={18} color="#DC2626" />
+            </Pressable>
+          ) : null}
+        </Card>
+      </Pressable>
+    );
+  }
+
   return (
-    <View className="flex-1 bg-slate-50">
-      <View className="border-b border-slate-200 bg-white px-4 py-3">
-        <Text className="text-center text-sm text-slate-600">
+    <View className="flex-1 bg-canvas">
+      <View className="border-b border-slate-100 bg-white px-4 pb-4 pt-3">
+        <Text className="text-sm text-slate-600">
           View documents from admin or send files to your administrator
         </Text>
+        <View className="mt-3 flex-row items-center rounded-xl border border-slate-200 bg-slate-50 px-3">
+          <Feather name="search" size={18} color="#94A3B8" />
+          <TextInput
+            className="ml-2 flex-1 py-2.5 text-sm text-slate-900"
+            placeholder="Search documents…"
+            value={search}
+            onChangeText={setSearch}
+            placeholderTextColor="#94A3B8"
+          />
+        </View>
         <Pressable
           onPress={handleSelectDocument}
           disabled={uploading}
-          className="mt-3 items-center rounded-xl bg-brand-600 py-3 disabled:opacity-50"
+          className="mt-3 flex-row items-center justify-center gap-2 rounded-xl bg-accent-green-500 py-3.5 disabled:opacity-50"
         >
+          <Feather name="upload" size={18} color="#fff" />
           <Text className="font-semibold text-white">
-            {uploading ? 'Uploading…' : 'Select document'}
+            {uploading ? 'Uploading…' : 'Upload document'}
           </Text>
         </Pressable>
-        {status ? <Text className="mt-2 text-center text-xs text-green-700">{status}</Text> : null}
+        {status ? (
+          <Text className="mt-2 text-center text-xs font-medium text-accent-green-600">{status}</Text>
+        ) : null}
       </View>
       <ErrorBanner message={error} onDismiss={() => setError('')} />
       <FlatList
-        data={fromAdmin}
+        data={filterDocs(fromAdmin)}
         keyExtractor={(item) => item.id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerClassName="px-4 pb-6"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
         ListHeaderComponent={
           <>
-            <Text className="px-4 pb-2 pt-3 text-xs font-semibold uppercase text-slate-500">
+            <Text className="mb-2 mt-2 text-xs font-bold uppercase tracking-wider text-slate-400">
               Sent to administrator
             </Text>
-            {myUploads.length === 0 ? (
-              <Text className="px-4 pb-4 text-sm text-slate-500">No uploads yet.</Text>
+            {filterDocs(myUploads).length === 0 ? (
+              <EmptyState
+                icon="upload"
+                title="No uploads yet"
+                description="Share PDFs, images, or documents with your admin."
+              />
             ) : (
-              myUploads.map((item) => (
-                <View
-                  key={item.id}
-                  className="flex-row items-center border-b border-slate-100 bg-white px-4 py-4"
-                >
-                  <Pressable className="flex-1" onPress={() => openDocument(item)}>
-                    <Text className="font-medium text-slate-900">{item.title}</Text>
-                    <Text className="mt-1 text-xs text-slate-500">
-                      {new Date(item.created_at ?? '').toLocaleString()}
-                    </Text>
-                  </Pressable>
-                  {openingId === item.id ? <ActivityIndicator /> : null}
-                  <Pressable onPress={() => confirmDelete(item)} className="ml-3 px-2 py-1">
-                    <Text className="text-sm text-red-600">Delete</Text>
-                  </Pressable>
-                </View>
-              ))
+              filterDocs(myUploads).map((item) => <DocRow key={item.id} item={item} showDelete />)
             )}
-            <Text className="px-4 pb-2 pt-4 text-xs font-semibold uppercase text-slate-500">
+            <Text className="mb-2 mt-4 text-xs font-bold uppercase tracking-wider text-slate-400">
               From administrator
             </Text>
-            {fromAdmin.length === 0 ? (
-              <Text className="px-4 pb-8 text-sm text-slate-500">No documents from admin yet.</Text>
-            ) : null}
+            {filterDocs(fromAdmin).length === 0 && filterDocs(myUploads).length === 0 && !q ? null : null}
           </>
         }
-        renderItem={({ item }) => (
-          <Pressable
-            onPress={() => openDocument(item)}
-            className="flex-row items-center border-b border-slate-100 bg-white px-4 py-4"
-          >
-            <View className="flex-1">
-              <Text className="font-medium text-slate-900">{item.title}</Text>
-              <Text className="mt-1 text-xs text-slate-500">
-                {new Date(item.assigned_at ?? item.created_at ?? '').toLocaleDateString()}
-              </Text>
-            </View>
-            {openingId === item.id ? <ActivityIndicator /> : null}
-          </Pressable>
-        )}
+        ListEmptyComponent={
+          filterDocs(fromAdmin).length === 0 && !q ? (
+            <EmptyState
+              icon="file-text"
+              title="No documents from admin"
+              description="Assigned materials will appear here."
+            />
+          ) : q ? (
+            <Text className="py-8 text-center text-sm text-slate-500">No matches for your search.</Text>
+          ) : null
+        }
+        renderItem={({ item }) => <DocRow item={item} />}
       />
     </View>
   );

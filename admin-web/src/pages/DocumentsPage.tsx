@@ -176,13 +176,13 @@ export function DocumentsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-bold">Document Sharing</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <h2 className="gc-page-title">Document Sharing</h2>
+        <p className="gc-page-subtitle">
           Share files with teachers and open documents teachers send you.
         </p>
       </div>
 
-      <form onSubmit={handleUpload} className="max-w-xl space-y-4 rounded-xl border bg-white p-6">
+      <form onSubmit={handleUpload} className="gc-card max-w-xl space-y-4 p-6">
         <input
           ref={fileInputRef}
           type="file"
@@ -193,7 +193,7 @@ export function DocumentsPage() {
         <button
           type="button"
           onClick={handleSelectFilesClick}
-          className="w-full rounded-lg border border-dashed border-slate-300 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-700 hover:bg-slate-100"
+          className="w-full rounded-xl border-2 border-dashed border-green-200 bg-green-50/50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-green-300 hover:bg-green-50"
         >
           Select document(s)
         </button>
@@ -205,7 +205,7 @@ export function DocumentsPage() {
           </p>
         ) : null}
         <select
-          className="w-full rounded border px-3 py-2 text-sm"
+          className="gc-input"
           value={targetType}
           onChange={(e) => setTargetType(e.target.value as DocumentTargetType)}
         >
@@ -268,7 +268,7 @@ export function DocumentsPage() {
         <button
           type="submit"
           disabled={uploading}
-          className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50"
+          className="gc-btn-primary disabled:opacity-50"
         >
           {uploading ? 'Uploading…' : 'Upload & assign'}
         </button>
@@ -277,54 +277,76 @@ export function DocumentsPage() {
 
       <div>
         <h3 className="font-semibold">From teachers</h3>
-        <ul className="mt-2 divide-y rounded-xl border bg-white text-sm">
-          {teacherUploads.length === 0 ? (
-            <li className="px-4 py-6 text-center text-slate-500">No teacher uploads yet.</li>
-          ) : (
-            teacherUploads.map((row) => (
-              <li key={row.id} className="flex justify-between gap-4 px-4 py-3">
-                <div>
-                  <div className="font-medium">{row.title}</div>
-                  <div className="text-slate-500">
-                    from {row.teacherName} · {new Date(row.created_at).toLocaleString()}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-blue-600"
-                  onClick={() => handleOpen(row)}
-                >
-                  Open
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
+        <div className="gc-card overflow-hidden">
+          <table className="gc-table">
+            <thead>
+              <tr>
+                <th>Document</th>
+                <th>Teacher</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {teacherUploads.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="py-8 text-center text-slate-500">
+                    No teacher uploads yet.
+                  </td>
+                </tr>
+              ) : (
+                teacherUploads.map((row) => (
+                  <tr key={row.id}>
+                    <td className="font-medium">{row.title}</td>
+                    <td className="text-slate-500">
+                      {row.teacherName} · {new Date(row.created_at).toLocaleString()}
+                    </td>
+                    <td className="text-right">
+                      <button type="button" className="text-sm font-medium text-green-600 hover:text-green-700" onClick={() => handleOpen(row)}>
+                        Open
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <div>
         <h3 className="font-semibold">Deliveries to teachers</h3>
-        <ul className="mt-2 divide-y rounded-xl border bg-white text-sm">
-          {deliveries.length === 0 ? (
-            <li className="px-4 py-6 text-center text-slate-500">No deliveries yet.</li>
-          ) : (
-            deliveries.map((row) => (
-              <li key={row.id} className="flex justify-between gap-4 px-4 py-3">
-                <div>
-                  <div className="font-medium">{row.title}</div>
-                  <div className="text-slate-500">→ {row.teacherName}</div>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-blue-600"
-                  onClick={() => handleOpen(row)}
-                >
-                  Open
-                </button>
-              </li>
-            ))
-          )}
-        </ul>
+        <div className="gc-card overflow-hidden">
+          <table className="gc-table">
+            <thead>
+              <tr>
+                <th>Document</th>
+                <th>Recipient</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {deliveries.length === 0 ? (
+                <tr>
+                  <td colSpan={3} className="py-8 text-center text-slate-500">
+                    No deliveries yet.
+                  </td>
+                </tr>
+              ) : (
+                deliveries.map((row) => (
+                  <tr key={row.id}>
+                    <td className="font-medium">{row.title}</td>
+                    <td className="text-slate-500">{row.teacherName}</td>
+                    <td className="text-right">
+                      <button type="button" className="text-sm font-medium text-green-600 hover:text-green-700" onClick={() => handleOpen(row)}>
+                        Open
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   );

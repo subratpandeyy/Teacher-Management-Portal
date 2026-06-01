@@ -5,7 +5,7 @@
  */
 import { File } from 'expo-file-system';
 import { supabase } from './supabase';
-import { UPLOAD_LOG } from '../../shared/upload';
+import { UPLOAD_LOG } from './uploadLog';
 import {
   resolveStorageBucket,
   sanitizeStorageFileName,

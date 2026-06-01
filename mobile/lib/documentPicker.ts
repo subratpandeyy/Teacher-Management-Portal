@@ -1,5 +1,5 @@
 import { File } from 'expo-file-system';
-import { UPLOAD_LOG } from '../../shared/upload';
+import { UPLOAD_LOG } from './uploadLog';
 
 const PICKER_MIME_TYPES = [
   'application/pdf',

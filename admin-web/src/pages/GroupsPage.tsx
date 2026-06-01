@@ -86,24 +86,27 @@ export function GroupsPage() {
 
   return (
     <div className="space-y-8">
-      <h2 className="text-xl font-bold">Teacher Groups</h2>
-      {msg ? <p className="text-sm text-slate-600">{msg}</p> : null}
+      <div>
+        <h2 className="gc-page-title">Teacher Groups</h2>
+        <p className="gc-page-subtitle">Organize teachers into groups for broadcasts and document sharing.</p>
+      </div>
+      {msg ? <p className="rounded-xl border border-green-100 bg-green-50 px-3 py-2 text-sm text-green-800">{msg}</p> : null}
 
-      <form onSubmit={handleCreate} className="max-w-md space-y-3 rounded-xl border bg-white p-4">
-        <h3 className="font-semibold">Create group</h3>
-        <input className="w-full rounded border px-3 py-2 text-sm" placeholder="Group name" value={name} onChange={(e) => setName(e.target.value)} required />
-        <textarea className="w-full rounded border px-3 py-2 text-sm" placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
-        <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white">Create</button>
+      <form onSubmit={handleCreate} className="gc-card max-w-md space-y-3 p-5">
+        <h3 className="font-semibold text-slate-900">Create group</h3>
+        <input className="gc-input" placeholder="Group name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <textarea className="gc-input" placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} rows={2} />
+        <button type="submit" className="gc-btn-primary">Create</button>
       </form>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <ul className="divide-y rounded-xl border bg-white">
+        <ul className="gc-card divide-y overflow-hidden">
           {groups.map((g) => (
             <li key={g.id}>
               <button
                 type="button"
                 onClick={() => setSelectedGroupId(g.id)}
-                className={`w-full px-4 py-3 text-left hover:bg-slate-50 ${selectedGroupId === g.id ? 'bg-blue-50' : ''}`}
+                className={`w-full px-4 py-3 text-left transition hover:bg-green-50/50 ${selectedGroupId === g.id ? 'border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-blue-50/30' : ''}`}
               >
                 <div className="font-medium">{g.name}</div>
                 {g.description ? <div className="text-xs text-slate-500">{g.description}</div> : null}
@@ -113,9 +116,9 @@ export function GroupsPage() {
         </ul>
 
         {selected ? (
-          <div className="rounded-xl border bg-white p-4">
+          <div className="gc-card p-5">
             <input
-              className="mb-2 w-full rounded border px-3 py-2 font-semibold"
+              className="gc-input mb-2 font-semibold"
               value={selected.name}
               onChange={(e) =>
                 setGroups((prev) =>
@@ -133,8 +136,8 @@ export function GroupsPage() {
               }
             />
             <div className="mb-4 flex gap-2">
-              <button type="button" onClick={handleUpdate} className="rounded bg-blue-600 px-3 py-1 text-sm text-white">Save</button>
-              <button type="button" onClick={handleDelete} className="rounded border border-red-200 px-3 py-1 text-sm text-red-600">Delete</button>
+              <button type="button" onClick={handleUpdate} className="gc-btn-primary text-sm">Save</button>
+              <button type="button" onClick={handleDelete} className="gc-btn-secondary border-red-200 text-sm text-red-600">Delete</button>
             </div>
 
             <h4 className="mb-2 font-medium">Members</h4>

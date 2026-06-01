@@ -18,7 +18,12 @@ export default function App() {
   }, []);
 
   if (session === null) {
-    return <div className="flex min-h-screen items-center justify-center text-slate-500">Loading…</div>;
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center bg-[#F8FAFC]">
+        <div className="h-10 w-10 animate-spin rounded-full border-2 border-green-500 border-t-transparent" />
+        <p className="mt-4 text-sm text-slate-500">Loading…</p>
+      </div>
+    );
   }
 
   if (!session) {

@@ -117,13 +117,13 @@ export function BroadcastsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h2 className="text-xl font-bold">Broadcasts</h2>
-        <p className="mt-1 text-sm text-slate-600">
+        <h2 className="gc-page-title">Broadcasts</h2>
+        <p className="gc-page-subtitle">
           Send to all teachers, one group, multiple groups, or selected teachers. Attachments upload to Storage and link via broadcast_attachments.
         </p>
       </div>
 
-      <form onSubmit={submit} className="max-w-xl space-y-4 rounded-xl border bg-white p-6">
+      <form onSubmit={submit} className="gc-card max-w-xl space-y-4 p-6">
         <div>
           <label className="text-sm font-medium">Send to</label>
           <select
@@ -206,7 +206,7 @@ export function BroadcastsPage() {
         <input className="w-full rounded border px-3 py-2 text-sm" placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} required />
         <textarea className="w-full rounded border px-3 py-2 text-sm" rows={5} placeholder="Message" value={message} onChange={(e) => setMessage(e.target.value)} required />
         <input type="file" className="text-sm" onChange={(e) => setAttachment(e.target.files?.[0] ?? null)} />
-        <button type="submit" disabled={sending} className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white disabled:opacity-50">
+        <button type="submit" disabled={sending} className="gc-btn-primary disabled:opacity-50">
           {sending ? 'Sending…' : 'Send broadcast'}
         </button>
         {msg ? <p className="text-sm">{msg}</p> : null}
@@ -214,7 +214,7 @@ export function BroadcastsPage() {
 
       <div>
         <h3 className="font-semibold">Sent broadcasts</h3>
-        <ul className="mt-2 divide-y rounded-xl border bg-white">
+        <ul className="gc-card mt-2 divide-y overflow-hidden">
           {broadcasts.map((b) => (
             <li key={String(b.id)} className="px-4 py-3 text-sm">
               <div className="flex justify-between gap-4">

@@ -27,7 +27,7 @@ export function TeacherDetailPanel({ teacher }: { teacher: TeacherRow }) {
 
   return (
     <div>
-      <h2 className="text-lg font-bold">{teacher.display_name ?? 'Teacher'}</h2>
+      <h2 className="text-xl font-bold text-slate-900">{teacher.display_name ?? 'Teacher'}</h2>
       <p className="text-sm text-slate-500">
         Private view for this teacher only — messages, documents, and availability are isolated.
       </p>
@@ -38,8 +38,10 @@ export function TeacherDetailPanel({ teacher }: { teacher: TeacherRow }) {
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`rounded-lg px-3 py-1.5 text-sm capitalize ${
-              tab === t ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200'
+            className={`rounded-xl px-4 py-2 text-sm font-medium capitalize transition ${
+              tab === t
+                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-sm'
+                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
             }`}
           >
             {t}
@@ -126,7 +128,9 @@ function DocumentsTab({ teacherId }: { teacherId: string }) {
     mime_type?: string | null;
   }) {
     const result = await openDocumentInBrowser(doc);
-    if (!result.ok) setError(result.error);
+    if (result.ok === false) {
+      setError(result.error);
+    }
   }
 
   return (

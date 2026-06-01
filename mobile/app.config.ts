@@ -1,25 +1,19 @@
 import type { ExpoConfig } from 'expo/config';
 
 const config: ExpoConfig = {
-  name: 'Teacher Portal',
-  slug: 'teacher-portal',
+  name: 'GenieClasses Teacher Portal',
+  slug: 'gc-teacher-portal',
   version: '1.0.0',
   orientation: 'portrait',
-  icon: './assets/icon.png',
+  icon: './assets/logo.png',
   userInterfaceStyle: 'light',
-  scheme: 'teacherportal',
+  scheme: 'gc-teacher-portal',
   ios: {
     supportsTablet: true,
-    bundleIdentifier: 'com.example.teacherportal',
+    bundleIdentifier: 'com.example.gc-teacher-portal',
   },
   android: {
-    adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
-      foregroundImage: './assets/android-icon-foreground.png',
-      backgroundImage: './assets/android-icon-background.png',
-      monochromeImage: './assets/android-icon-monochrome.png',
-    },
-    package: 'com.example.teacherportal',
+    package: 'com.example.gc-teacher-portal',
     predictiveBackGestureEnabled: false,
     intentFilters: [
       {
@@ -27,7 +21,7 @@ const config: ExpoConfig = {
         autoVerify: true,
         data: [
           {
-            scheme: 'teacherportal',
+            scheme: 'gc-teacher-portal',
             host: 'auth',
             pathPrefix: '/callback',
           },

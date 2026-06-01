@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Alert,
@@ -26,6 +27,7 @@ import { supabase } from '../../lib/supabase';
 import { pickDocumentForUpload } from '../../lib/documentPicker';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { LoadingScreen } from '../../components/LoadingScreen';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function ChatScreen() {
   const { user } = useAuth();
@@ -183,27 +185,44 @@ export default function ChatScreen() {
 
   return (
     <KeyboardAvoidingView
-      className="flex-1 bg-slate-50"
+      className="flex-1 bg-canvas"
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={90}
     >
+      <View className="border-b border-slate-100 bg-white px-4 py-2.5">
+        <View className="flex-row items-center gap-2">
+          <View className="h-9 w-9 items-center justify-center rounded-full bg-accent-blue-100">
+            <Feather name="message-circle" size={18} color="#3B82F6" />
+          </View>
+          <View>
+            <Text className="font-semibold text-slate-900">Administrator</Text>
+            <Text className="text-xs text-slate-500">Private support channel</Text>
+          </View>
+        </View>
+      </View>
+
       <ErrorBanner message={error} onDismiss={() => setError('')} />
       <FlatList
         ref={listRef}
         data={messages}
         keyExtractor={(item) => item.id}
-        contentContainerClassName="px-4 py-3"
+        contentContainerClassName="px-4 py-3 flex-grow"
         onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: false })}
         ListEmptyComponent={
-          <Text className="py-8 text-center text-slate-500">Message your administrator here.</Text>
+          <EmptyState
+            icon="message-circle"
+            title="Start a conversation"
+            description="Message your administrator here."
+          />
         }
         renderItem={({ item }) => {
           const mine = item.sender_id === teacherId;
           const deleted = !!item.deleted_at;
           const hasAttachment = !!item.attachment_url && !deleted;
+          const bodyOnly = item.body && !item.body.startsWith('📎');
           return (
             <Pressable
-              className={`mb-2 max-w-[85%] ${mine ? 'self-end' : 'self-start'}`}
+              className={`mb-3 max-w-[88%] ${mine ? 'self-end' : 'self-start'}`}
               onLongPress={
                 mine && !deleted
                   ? () => {
@@ -223,23 +242,41 @@ export default function ChatScreen() {
               }
             >
               <View
-                className={`rounded-2xl px-4 py-2 ${mine ? 'bg-brand-600' : 'bg-white border border-slate-200'} ${deleted ? 'opacity-60' : ''}`}
+                className={`rounded-2xl px-4 py-2.5 ${
+                  mine
+                    ? 'rounded-br-md bg-accent-green-500'
+                    : 'rounded-bl-md border border-slate-100 bg-white'
+                } ${deleted ? 'opacity-60' : ''}`}
+                style={
+                  mine
+                    ? { shadowColor: '#22C55E', shadowOpacity: 0.2, shadowRadius: 4, shadowOffset: { width: 0, height: 2 } }
+                    : undefined
+                }
               >
-                {!deleted && item.body && !item.body.startsWith('📎') ? (
+                {!deleted && bodyOnly ? (
                   <Text className={mine ? 'text-white' : 'text-slate-800'}>{item.body}</Text>
                 ) : null}
                 {deleted ? (
-                  <Text className={`italic ${mine ? 'text-white' : 'text-slate-500'}`}>Message deleted</Text>
+                  <Text className={`italic ${mine ? 'text-green-100' : 'text-slate-500'}`}>
+                    Message deleted
+                  </Text>
                 ) : null}
                 {hasAttachment ? (
-                  <Pressable onPress={() => openAttachment(item.attachment_url!)} className="mt-1">
-                    <Text className={mine ? 'text-white underline' : 'text-brand-600'}>
-                      📎 {item.attachment_name ?? 'Attachment'}
+                  <Pressable
+                    onPress={() => openAttachment(item.attachment_url!)}
+                    className={`mt-1 flex-row items-center gap-2 rounded-lg px-2 py-1.5 ${mine ? 'bg-white/20' : 'bg-accent-blue-50'}`}
+                  >
+                    <Feather name="paperclip" size={14} color={mine ? '#fff' : '#3B82F6'} />
+                    <Text
+                      className={`flex-1 text-sm font-medium ${mine ? 'text-white' : 'text-accent-blue-600'}`}
+                      numberOfLines={1}
+                    >
+                      {item.attachment_name ?? 'Attachment'}
                     </Text>
                   </Pressable>
                 ) : null}
               </View>
-              <Text className="mt-0.5 text-[10px] text-slate-400">
+              <Text className={`mt-1 text-[10px] ${mine ? 'text-right text-slate-400' : 'text-slate-400'}`}>
                 {new Date(item.created_at).toLocaleTimeString()}
                 {item.updated_at !== item.created_at ? ' · edited' : ''}
               </Text>
@@ -247,21 +284,29 @@ export default function ChatScreen() {
           );
         }}
       />
-      <View className="border-t border-slate-200 bg-white px-3 py-2">
+      <View className="border-t border-slate-100 bg-white px-3 py-2.5">
         {editingId ? (
-          <Text className="mb-1 text-xs text-brand-600">Editing message — send to save</Text>
+          <View className="mb-2 flex-row items-center gap-1 rounded-lg bg-accent-blue-50 px-2 py-1">
+            <Feather name="edit-2" size={12} color="#3B82F6" />
+            <Text className="text-xs font-medium text-accent-blue-600">Editing message</Text>
+          </View>
         ) : null}
         <View className="flex-row items-end gap-2">
           <Pressable
             onPress={handleAttach}
             disabled={attaching || !!editingId}
-            className="rounded-xl border border-slate-200 px-3 py-2.5 disabled:opacity-50"
+            className="h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 disabled:opacity-50"
           >
-            <Text className="text-lg">{attaching ? '…' : '📎'}</Text>
+            {attaching ? (
+              <Text className="text-slate-400">…</Text>
+            ) : (
+              <Feather name="paperclip" size={20} color="#3B82F6" />
+            )}
           </Pressable>
           <TextInput
-            className="max-h-28 flex-1 rounded-xl border border-slate-200 px-3 py-2"
+            className="max-h-28 min-h-[44px] flex-1 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2.5 text-base text-slate-900"
             placeholder="Type a message…"
+            placeholderTextColor="#94A3B8"
             value={text}
             onChangeText={setText}
             multiline
@@ -269,9 +314,9 @@ export default function ChatScreen() {
           <Pressable
             onPress={handleSend}
             disabled={sending || !text.trim() || attaching}
-            className="rounded-xl bg-brand-600 px-4 py-2.5 disabled:opacity-50"
+            className="h-11 w-11 items-center justify-center rounded-xl bg-accent-green-500 disabled:opacity-50"
           >
-            <Text className="font-semibold text-white">{sending ? '…' : editingId ? 'Save' : 'Send'}</Text>
+            <Feather name={editingId ? 'check' : 'send'} size={18} color="#fff" />
           </Pressable>
         </View>
       </View>

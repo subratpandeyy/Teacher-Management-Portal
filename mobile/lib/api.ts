@@ -9,7 +9,7 @@ import {
   type StorageBucket,
 } from './storageService';
 import type { PickedFile } from './documentPicker';
-import { UPLOAD_LOG } from '../../shared/upload';
+import { UPLOAD_LOG } from './uploadLog';
 import { openDocumentWithLinking } from './openDocument';
 import type {
   TeacherBroadcast,

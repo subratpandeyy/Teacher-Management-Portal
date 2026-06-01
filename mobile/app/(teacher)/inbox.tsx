@@ -1,3 +1,4 @@
+import { Feather } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Linking, Pressable, RefreshControl, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../../lib/auth';
@@ -12,6 +13,8 @@ import {
 import { supabase } from '../../lib/supabase';
 import { ErrorBanner } from '../../components/ErrorBanner';
 import { LoadingScreen } from '../../components/LoadingScreen';
+import { Card } from '../../components/ui/Card';
+import { EmptyState } from '../../components/ui/EmptyState';
 
 export default function InboxScreen() {
   const { user } = useAuth();
@@ -121,82 +124,123 @@ export default function InboxScreen() {
 
   if (selected) {
     return (
-      <View className="flex-1 bg-slate-50 p-4">
-        <Pressable onPress={closeDetail} className="mb-4">
-          <Text className="text-brand-600">← Back</Text>
-        </Pressable>
-        <Text className="text-xl font-bold text-slate-900">{selected.title}</Text>
-        <Text className="mt-1 text-xs text-slate-500">
-          {new Date(selected.published_at).toLocaleString()}
-        </Text>
-        <Text className="mt-4 text-base leading-6 text-slate-700">{selected.message}</Text>
-        {(selected.attachments?.length
-          ? selected.attachments
-          : selected.attachment_url
-            ? [
-                {
-                  storage_path: selected.attachment_url,
-                  file_name: selected.attachment_name ?? 'Attachment',
-                  id: 'legacy',
-                  mime_type: null,
-                },
-              ]
-            : []
-        ).map((att) => (
-          <Pressable key={att.id} className="mt-3" onPress={() => openAttachment(att.storage_path)}>
-            <Text className="text-brand-600">📎 {att.file_name}</Text>
+      <View className="flex-1 bg-canvas">
+        <View className="px-4 pt-3">
+          <Pressable onPress={closeDetail} className="mb-3 flex-row items-center gap-1 self-end p-2 rounded-xl bg-accent-green-50">
+            <Feather name="arrow-left" size={18} color="#22C55E" />
+            <Text className="font-medium text-accent-green-600">Back to inbox</Text>
           </Pressable>
-        ))}
-        <View className="mt-6">
-          <Text className="mb-2 font-semibold text-slate-800">Your feedback</Text>
-          <TextInput
-            className="min-h-[80px] rounded-xl border border-slate-200 bg-white p-3"
-            multiline
-            value={feedback}
-            onChangeText={setFeedback}
-            placeholder="Reply to this broadcast…"
-          />
-          <Pressable
-            onPress={saveFeedback}
-            disabled={savingFeedback}
-            className="mt-3 items-center rounded-xl bg-brand-600 py-3 disabled:opacity-50"
-          >
-            <Text className="font-semibold text-white">
-              {savingFeedback ? 'Saving…' : 'Submit feedback'}
-            </Text>
-          </Pressable>
+          <Card>
+            <View className="mb-2 flex-row items-start gap-3">
+              <View className="h-10 w-10 items-center justify-center rounded-xl bg-accent-green-50">
+                <Feather name="volume-2" size={20} color="#22C55E" />
+              </View>
+              <View className="flex-1">
+                <Text className="text-lg font-bold text-slate-900">{selected.title}</Text>
+                <Text className="mt-0.5 text-xs text-slate-500">
+                  {new Date(selected.published_at).toLocaleString()}
+                </Text>
+              </View>
+            </View>
+            <Text className="text-base leading-6 text-slate-700">{selected.message}</Text>
+            {(selected.attachments?.length
+              ? selected.attachments
+              : selected.attachment_url
+                ? [
+                    {
+                      storage_path: selected.attachment_url,
+                      file_name: selected.attachment_name ?? 'Attachment',
+                      id: 'legacy',
+                      mime_type: null,
+                    },
+                  ]
+                : []
+            ).map((att) => (
+              <Pressable
+                key={att.id}
+                className="mt-3 flex-row items-center gap-2 rounded-xl bg-accent-blue-50 px-3 py-2.5"
+                onPress={() => openAttachment(att.storage_path)}
+              >
+                <Feather name="paperclip" size={16} color="#3B82F6" />
+                <Text className="flex-1 font-medium text-accent-blue-600">{att.file_name}</Text>
+                <Feather name="download" size={16} color="#3B82F6" />
+              </Pressable>
+            ))}
+          </Card>
+
+          <Card className="mt-4">
+            <Text className="mb-2 font-semibold text-slate-800">Your feedback</Text>
+            <TextInput
+              className="min-h-[100px] rounded-xl border border-slate-200 bg-slate-50 p-3 text-base text-slate-800"
+              multiline
+              value={feedback}
+              onChangeText={setFeedback}
+              placeholder="Reply to this broadcast…"
+              placeholderTextColor="#94A3B8"
+            />
+            <Pressable
+              onPress={saveFeedback}
+              disabled={savingFeedback}
+              className="mt-3 items-center rounded-xl bg-accent-green-500 py-3 disabled:opacity-50"
+            >
+              <Text className="font-semibold text-white">
+                {savingFeedback ? 'Saving…' : 'Submit feedback'}
+              </Text>
+            </Pressable>
+          </Card>
         </View>
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-slate-50">
+    <View className="flex-1 bg-canvas">
       <ErrorBanner message={error} onDismiss={() => setError('')} />
       <FlatList
         data={items}
         keyExtractor={(item) => item.recipient_id}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} />}
+        contentContainerClassName="px-4 py-3 pb-6"
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
         ListEmptyComponent={
-          <Text className="p-8 text-center text-slate-500">No messages yet.</Text>
+          <EmptyState
+            icon="inbox"
+            title="No broadcasts yet"
+            description="Messages from your administrator will appear here."
+          />
         }
         renderItem={({ item }) => (
-          <Pressable
-            onPress={() => openMessage(item)}
-            className="border-b border-slate-100 bg-white px-4 py-4"
-          >
-            <View className="flex-row items-center justify-between">
-              <Text
-                className={`flex-1 text-base ${item.read_at ? 'text-slate-700' : 'font-semibold text-slate-900'}`}
-                numberOfLines={1}
-              >
-                {item.title}
-              </Text>
-              {!item.read_at ? <View className="ml-2 h-2 w-2 rounded-full bg-brand-600" /> : null}
-            </View>
-            <Text className="mt-1 text-sm text-slate-500" numberOfLines={2}>
-              {item.message}
-            </Text>
+          <Pressable onPress={() => openMessage(item)} className="mb-3">
+            <Card className={!item.read_at ? 'border-accent-green-200' : ''}>
+              <View className="flex-row items-start gap-3">
+                <View
+                  className={`h-11 w-11 items-center justify-center rounded-xl ${item.read_at ? 'bg-slate-100' : 'bg-accent-green-100'}`}
+                >
+                  <Feather name="volume-2" size={20} color={item.read_at ? '#64748B' : '#22C55E'} />
+                </View>
+                <View className="flex-1">
+                  <View className="flex-row items-center justify-between gap-2">
+                    <Text
+                      className={`flex-1 text-base ${item.read_at ? 'text-slate-700' : 'font-bold text-slate-900'}`}
+                      numberOfLines={1}
+                    >
+                      {item.title}
+                    </Text>
+                    {!item.read_at ? (
+                      <View className="rounded-full bg-accent-green-500 px-2 py-0.5">
+                        <Text className="text-[10px] font-bold text-white">NEW</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <Text className="mt-1 text-xs text-slate-400">
+                    {new Date(item.published_at).toLocaleString()}
+                  </Text>
+                  <Text className="mt-2 text-sm leading-5 text-slate-600" numberOfLines={2}>
+                    {item.message}
+                  </Text>
+                </View>
+                <Feather name="chevron-right" size={18} color="#CBD5E1" />
+              </View>
+            </Card>
           </Pressable>
         )}
       />
