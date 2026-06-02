@@ -80,7 +80,7 @@ export default function AvailabilityScreen() {
         ListHeaderComponent={
           <Card className="mt-3">
             <View className="mb-3 flex-row items-center gap-2">
-              <Feather name="calendar" size={20} color="#22C55E" />
+              <Feather name="calendar" size={20} color="#2563EB" />
               <Text className="text-base font-bold text-slate-900">Add availability</Text>
             </View>
             <View className="mb-3 flex-row gap-2">
@@ -131,10 +131,10 @@ export default function AvailabilityScreen() {
                   <Pressable
                     key={d}
                     onPress={() => setDayOfWeek(String(i))}
-                    className={`rounded-lg px-3 py-2 ${dayOfWeek === String(i) ? 'bg-accent-green-500' : 'bg-accent-green-50'}`}
+                    className={`rounded-lg px-3 py-2 ${dayOfWeek === String(i) ? 'bg-accent-blue-500' : 'bg-accent-blue-50'}`}
                   >
                     <Text
-                      className={`text-xs font-semibold ${dayOfWeek === String(i) ? 'text-white' : 'text-accent-green-700'}`}
+                      className={`text-xs font-semibold ${dayOfWeek === String(i) ? 'text-white' : 'text-accent-blue-700'}`}
                     >
                       {d}
                     </Text>
@@ -172,7 +172,7 @@ export default function AvailabilityScreen() {
             />
             <Pressable
               onPress={save}
-              className="mt-4 flex-row items-center justify-center gap-2 rounded-xl bg-accent-green-500 py-3"
+              className="mt-4 flex-row items-center justify-center gap-2 rounded-xl bg-accent-blue-500 py-3"
             >
               <Feather name="clock" size={18} color="#fff" />
               <Text className="font-semibold text-white">Save availability</Text>
@@ -188,8 +188,8 @@ export default function AvailabilityScreen() {
         }
         renderItem={({ item }) => (
           <Card className="mb-2 mt-2 flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-xl bg-accent-green-100">
-              <Feather name="clock" size={18} color="#16A34A" />
+            <View className="h-10 w-10 items-center justify-center rounded-xl bg-accent-blue-100">
+              <Feather name="clock" size={18} color="#2563EB" />
             </View>
             <View className="flex-1">
               {item.kind === 'recurring_weekly' ? (

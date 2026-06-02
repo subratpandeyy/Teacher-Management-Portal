@@ -194,7 +194,7 @@ export default function DocumentsScreen() {
         <Pressable
           onPress={handleSelectDocument}
           disabled={uploading}
-          className="mt-3 flex-row items-center justify-center gap-2 rounded-xl bg-accent-green-500 py-3.5 disabled:opacity-50"
+          className="mt-3 flex-row items-center justify-center gap-2 rounded-xl bg-accent-blue-500 py-3.5 disabled:opacity-50"
         >
           <Feather name="upload" size={18} color="#fff" />
           <Text className="font-semibold text-white">

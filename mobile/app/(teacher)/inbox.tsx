@@ -1,4 +1,4 @@
-import { Feather } from '@expo/vector-icons';
+import { Feather, Octicons } from '@expo/vector-icons';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, Linking, Pressable, RefreshControl, Text, TextInput, View } from 'react-native';
 import { useAuth } from '../../lib/auth';
@@ -126,14 +126,14 @@ export default function InboxScreen() {
     return (
       <View className="flex-1 bg-canvas">
         <View className="px-4 pt-3">
-          <Pressable onPress={closeDetail} className="mb-3 flex-row items-center gap-1 self-end p-2 rounded-xl bg-accent-green-50">
-            <Feather name="arrow-left" size={18} color="#22C55E" />
-            <Text className="font-medium text-accent-green-600">Back to inbox</Text>
+          <Pressable onPress={closeDetail} className="mb-3 flex-row items-center gap-1 self-end p-2 rounded-xl bg-gray-600">
+            <Feather name="arrow-left" size={18} color="white" />
+            <Text className="font-medium text-white">Back to inbox</Text>
           </Pressable>
           <Card>
             <View className="mb-2 flex-row items-start gap-3">
-              <View className="h-10 w-10 items-center justify-center rounded-xl bg-accent-green-50">
-                <Feather name="volume-2" size={20} color="#22C55E" />
+              <View className="h-10 w-10 items-center justify-center rounded-xl bg-accent-blue-50">
+                <Feather name="volume-2" size={20} color="#2563EB" />
               </View>
               <View className="flex-1">
                 <Text className="text-lg font-bold text-slate-900">{selected.title}</Text>
@@ -181,7 +181,7 @@ export default function InboxScreen() {
             <Pressable
               onPress={saveFeedback}
               disabled={savingFeedback}
-              className="mt-3 items-center rounded-xl bg-accent-green-500 py-3 disabled:opacity-50"
+              className="mt-3 items-center rounded-xl bg-accent-blue-500 py-3 disabled:opacity-50"
             >
               <Text className="font-semibold text-white">
                 {savingFeedback ? 'Saving…' : 'Submit feedback'}
@@ -195,6 +195,17 @@ export default function InboxScreen() {
 
   return (
     <View className="flex-1 bg-canvas">
+      <View className="border-b border-slate-100 bg-white px-4 py-2.5">
+        <View className="flex-row items-center gap-2">
+          <View className="h-9 w-9 items-center justify-center rounded-full bg-blue-400">
+          <Octicons name="broadcast" size={24} color="white" />
+          </View>
+          <View>
+            <Text className="font-semibold text-slate-900">Inbox</Text>
+            <Text className="text-xs text-slate-500">Broadcasts from your administrator</Text>
+          </View>
+        </View>
+      </View>
       <ErrorBanner message={error} onDismiss={() => setError('')} />
       <FlatList
         data={items}
