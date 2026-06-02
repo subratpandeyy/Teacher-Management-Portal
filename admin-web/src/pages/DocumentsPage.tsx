@@ -51,9 +51,13 @@ export function DocumentsPage() {
       ]);
       setTeachers((teacherData as TeacherRow[]) ?? []);
       setGroups((groupData as { id: string; name: string }[]) ?? []);
-      await Promise.all([loadDeliveries(), loadTeacherUploads()]);
+      await loadAll();
     })();
   }, []);
+
+  async function loadAll() {
+    await Promise.all([loadDeliveries(), loadTeacherUploads()]);
+  }
 
   async function loadDeliveries() {
     const { data } = await fetchDocumentDeliveries();
