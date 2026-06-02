@@ -26,7 +26,7 @@ body {
   }
 
   .gc-btn-primary {
-    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-green-600 disabled:opacity-60;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl bg-blue-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-600 disabled:opacity-60;
   }
 
   .gc-btn-secondary {
@@ -50,15 +50,15 @@ body {
   }
 
   .gc-stat-card {
-    @apply flex flex-col gap-1 rounded-2xl border border-slate-100 bg-white p-5 shadow-sm;
+    @apply flex flex-col gap-1 rounded-2xl border border-slate-100 bg-white p-5 shadow-md;
   }
 
   .gc-sidebar-link {
-    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-green-50 hover:text-green-700;
+    @apply flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-blue-50 hover:text-blue-700;
   }
 
   .gc-sidebar-link-active {
-    @apply bg-gradient-to-r from-green-50 to-blue-50 text-green-700 shadow-sm;
+    @apply bg-gradient-to-r from-blue-50 to-blue-50 text-blue-700 shadow-sm;
   }
 
   .gc-table {

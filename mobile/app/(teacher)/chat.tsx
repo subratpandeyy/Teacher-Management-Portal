@@ -244,7 +244,7 @@ export default function ChatScreen() {
               <View
                 className={`rounded-2xl px-4 py-2.5 ${
                   mine
-                    ? 'rounded-br-md bg-accent-green-500'
+                    ? 'rounded-br-md bg-accent-blue-500'
                     : 'rounded-bl-md border border-slate-100 bg-white'
                 } ${deleted ? 'opacity-60' : ''}`}
                 style={
@@ -314,7 +314,7 @@ export default function ChatScreen() {
           <Pressable
             onPress={handleSend}
             disabled={sending || !text.trim() || attaching}
-            className="h-11 w-11 items-center justify-center rounded-xl bg-accent-green-500 disabled:opacity-50"
+            className="h-11 w-11 items-center justify-center rounded-xl bg-accent-blue-500 disabled:opacity-50"
           >
             <Feather name={editingId ? 'check' : 'send'} size={18} color="#fff" />
           </Pressable>

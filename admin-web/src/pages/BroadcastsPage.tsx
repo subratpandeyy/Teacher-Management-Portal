@@ -115,7 +115,7 @@ export function BroadcastsPage() {
   }
 
   return (
-    <div className="space-y-8">
+      <div className="space-y-8">
       <div>
         <h2 className="gc-page-title">Broadcasts</h2>
         <p className="gc-page-subtitle">
@@ -123,7 +123,9 @@ export function BroadcastsPage() {
         </p>
       </div>
 
-      <form onSubmit={submit} className="gc-card max-w-xl space-y-4 p-6">
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_1fr] gap-4">
+
+      <form onSubmit={submit} className="gc-card max-w-full space-y-4 p-6">
         <div>
           <label className="text-sm font-medium">Send to</label>
           <select
@@ -211,6 +213,60 @@ export function BroadcastsPage() {
         </button>
         {msg ? <p className="text-sm">{msg}</p> : null}
       </form>
+
+  <aside className="sticky top-6 h-fit">
+  <div className="gc-card p-4">
+    <h3 className="font-semibold text-lg">Broadcast Feedback</h3>
+
+    {feedback.length === 0 ? (
+      <>
+      <p className="mt-3 text-sm text-slate-500">
+        Select a broadcast and click Details to view feedback.
+      </p>
+      <p className="mt-3 text-md text-blue-500">
+        No Feedback yet.
+      </p>
+    </>
+    ) : (
+      <div className="mt-4 space-y-3 max-h-[700px] overflow-y-auto">
+        {feedback.map((f) => (
+          <div
+            key={String(f.id)}
+            className="rounded-lg border border-slate-200 p-3"
+          >
+            <div className="font-medium text-sm">
+              {(f.profiles as { display_name?: string })?.display_name ??
+                "Unknown User"}
+            </div>
+
+            <div className="mt-1 text-xs text-slate-500">
+              Reply on:
+            </div>
+
+            <div className="text-sm font-medium text-slate-700">
+              {
+                broadcasts.find(
+                  (b) => String(b.id) === String(f.broadcast_id)
+                )?.title as string
+              }
+            </div>
+
+            <p className="mt-2 text-sm">
+              {String(f.feedback_text)}
+            </p>
+
+            {f.created_at ? (
+              <div className="mt-2 text-xs text-slate-400">
+                {new Date(String(f.created_at)).toLocaleString()}
+              </div>
+            ) : null}
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+</aside>
+</div>
 
       <div>
         <h3 className="font-semibold">Sent broadcasts</h3>

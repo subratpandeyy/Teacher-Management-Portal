@@ -19,15 +19,14 @@ export function AdminLayout({ onSignOut }: { onSignOut: () => void }) {
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
       <aside className="fixed inset-y-0 left-0 z-30 flex w-64 flex-col border-r border-slate-100 bg-white shadow-sm">
-        <div className="border-b border-slate-100 px-5 py-5">
+        <div className="border-slate-100 px-5 py-5">
           <div className="flex items-center gap-3">
-            {/* <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-green-500 to-blue-500 text-lg font-bold text-white shadow-sm"> */}
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl shadow-sm">
-              <img src={logo} alt="Genieclasses Logo" className="h-10 w-10" />
+            <div className="flex h-20 w-20 items-center justify-center rounded-xl">
+              <img src={logo} alt="Genieclasses Logo" className='h-20' />
             </div>
             <div>
-              <p className="text-sm font-bold leading-tight text-slate-900">Genieclasses</p>
-              <p className="text-xs text-slate-500">Teachers Portal</p>
+              <p className="text-md font-bold leading-tight text-slate-900">Genieclasses</p>
+              <p className="text-sm text-slate-500">Teachers Portal</p>
             </div>
           </div>
         </div>
@@ -50,7 +49,7 @@ export function AdminLayout({ onSignOut }: { onSignOut: () => void }) {
           <button
             type="button"
             onClick={onSignOut}
-            className="gc-sidebar-link w-full text-red-600 hover:bg-red-50 hover:text-red-700"
+            className="gc-sidebar-link w-full text-gray-600 hover:bg-gray-50 hover:text-gray-700"
           >
             <LogOut className="h-5 w-5" strokeWidth={2} />
             Sign out

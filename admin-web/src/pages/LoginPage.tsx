@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
-import { Eye, EyeOff, GraduationCap, Lock, Mail } from 'lucide-react';
+import { Eye, EyeOff, ShieldUser, Lock, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
+import logo from '../assets/logo.png';
 
 export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
   const [email, setEmail] = useState('');
@@ -49,8 +50,8 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
 
       <div className="hidden flex-1 flex-col justify-center bg-gradient-to-br from-green-50 via-white to-blue-50 px-16 lg:flex">
         <div className="max-w-md">
-          <div className="mb-8 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-blue-500 text-2xl font-bold text-white shadow-lg">
-            G
+          <div className="mb-4 flex h-30 w-30 items-center justify-center">
+            <img src={logo} alt='GenieClasses'/>
           </div>
           <h2 className="text-3xl font-bold tracking-tight text-slate-900">
             Manage your teaching community
@@ -82,8 +83,8 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
           className="gc-card w-full max-w-md p-8 shadow-lg"
         >
           <div className="mb-8 text-center lg:text-left">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-green-500 to-blue-500 lg:mx-0">
-              <GraduationCap className="h-7 w-7 text-white" strokeWidth={2} />
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center bg-blue-500 justify-center rounded-2xl lg:mx-0">
+              <ShieldUser className="h-7 w-7 text-white" strokeWidth={2} /> 
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Genieclasses Teachers Portal</h1>
             <p className="mt-1 text-sm text-slate-500">Admin sign in</p>

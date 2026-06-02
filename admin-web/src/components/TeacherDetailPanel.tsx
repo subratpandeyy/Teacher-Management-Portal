@@ -40,7 +40,7 @@ export function TeacherDetailPanel({ teacher }: { teacher: TeacherRow }) {
             onClick={() => setTab(t)}
             className={`rounded-xl px-4 py-2 text-sm font-medium capitalize transition ${
               tab === t
-                ? 'bg-gradient-to-r from-green-500 to-green-600 text-white shadow-sm'
+                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm'
                 : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
             }`}
           >
@@ -333,47 +333,113 @@ function ChatTab({ teacherId }: { teacherId: string }) {
   }
 
   return (
-    <div className="max-w-xl">
+    <div className="max-w-2xl">
       {error ? <p className="text-sm text-red-600">{error}</p> : null}
-      <div className="mb-4 max-h-80 overflow-y-auto rounded-xl border bg-white p-4">
-        {messages.map((m) => (
-          <div key={m.id} className="mb-3 text-sm group">
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400">{new Date(m.created_at).toLocaleTimeString()}</span>
-              {m.deleted_at ? null : (
-                <span className="flex gap-2 opacity-0 group-hover:opacity-100">
-                  <button type="button" className="text-blue-600" onClick={() => { setEditingId(m.id); setText(m.body); }}>Edit</button>
-                  <button
-                    type="button"
-                    className="text-red-600"
-                    onClick={() => {
-                      void softDeleteChatMessage(m.id).then(() => {
-                        if (conversationId) void loadMessages(conversationId);
-                      });
-                    }}
-                  >
-                    Delete
-                  </button>
-                </span>
-              )}
-            </div>
-            <p className={m.deleted_at ? 'italic text-slate-500' : ''}>{m.deleted_at ? 'Message deleted' : m.body}</p>
-            {m.attachment_url && !m.deleted_at ? (
-              <button
-                type="button"
-                className="text-blue-600 text-xs"
-                onClick={() => {
-                  void getSignedUrl(m.attachment_url!, STORAGE_BUCKETS.chatFiles).then(({ data }) => {
-                    if (data?.signedUrl) window.open(data.signedUrl);
-                  });
-                }}
+        <div className="mb-4 max-h-80 overflow-y-auto rounded-xl shadow-sm bg-white p-4">
+          {messages.map((m) => {
+            const isAdmin = m.sender_id === adminId;
+
+            return (
+              <div
+                key={m.id}
+                className={`mb-3 flex ${
+                  isAdmin ? 'justify-end' : 'justify-start'
+                }`}
               >
-                📎 {m.attachment_name ?? 'Attachment'}
-              </button>
-            ) : null}
-          </div>
-        ))}
-      </div>
+                <div
+                  className={`group max-w-[75%] rounded-xl px-4 py-3 shadow-sm ${
+                    isAdmin
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-slate-100 text-slate-900'
+                  }`}
+                >
+                  <div className="mb-2 flex items-center justify-between gap-4">
+                    <span
+                      className={`text-xs font-semibold ${
+                        isAdmin ? 'text-blue-400' : 'text-slate-700'
+                      }`}
+                    >
+                      {isAdmin ? 'Admin' : 'Teacher'}
+                    </span>
+
+                    <span
+                      className={`text-xs ${
+                        isAdmin ? 'text-blue-400' : 'text-slate-800'
+                      }`}
+                    >
+                      {new Date(m.created_at).toLocaleTimeString()}
+                    </span>
+                  </div>
+
+                  <p
+                    className={
+                      m.deleted_at
+                        ? 'italic opacity-70'
+                        : ''
+                    }
+                  >
+                    {m.deleted_at
+                      ? 'Message deleted'
+                      : m.body}
+                  </p>
+
+                  {m.attachment_url && !m.deleted_at ? (
+                    <button
+                      type="button"
+                      className={`mt-2 block text-xs underline ${
+                        isAdmin
+                          ? 'text-blue-100'
+                          : 'text-blue-600'
+                      }`}
+                      onClick={() => {
+                        void getSignedUrl(
+                          m.attachment_url!,
+                          STORAGE_BUCKETS.chatFiles
+                        ).then(({ data }) => {
+                          if (data?.signedUrl) {
+                            window.open(data.signedUrl);
+                          }
+                        });
+                      }}
+                    >
+                      📎 {m.attachment_name ?? 'Attachment'}
+                    </button>
+                  ) : null}
+
+                  {!m.deleted_at && isAdmin ? (
+                    <div className="mt-2 flex gap-3 opacity-0 transition-opacity group-hover:opacity-100">
+                      <button
+                        type="button"
+                        className="text-xs text-blue-100"
+                        onClick={() => {
+                          setEditingId(m.id);
+                          setText(m.body);
+                        }}
+                      >
+                        Edit
+                      </button>
+
+                      <button
+                        type="button"
+                        className="text-xs text-red-200"
+                        onClick={() => {
+                          void softDeleteChatMessage(m.id).then(() => {
+                            if (conversationId) {
+                              void loadMessages(conversationId);
+                            }
+                          });
+                        }}
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
       {editingId ? <p className="mb-2 text-xs text-blue-600">Editing message</p> : null}
       <form onSubmit={send} className="flex gap-2">
         <input

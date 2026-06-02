@@ -32,15 +32,16 @@ export function TeachersPage() {
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="gc-stat-card">
           <div className="flex items-center gap-2 text-slate-500">
-            <Users className="h-4 w-4 text-green-600" />
-            <span className="text-xs font-semibold uppercase tracking-wide">Teachers</span>
+            <Users className="h-6 w-6 text-green-600" />
+            <span className="text-sm font-semibold uppercase tracking-wide">Teachers</span>
           </div>
           <p className="text-3xl font-bold text-slate-900">{teachers.length}</p>
+          <p className="text-xs text-slate-400">Total Teachers Onboarded</p>
         </div>
         <div className="gc-stat-card">
           <div className="flex items-center gap-2 text-slate-500">
-            <MessageCircle className="h-4 w-4 text-blue-600" />
-            <span className="text-xs font-semibold uppercase tracking-wide">Active chats</span>
+            <MessageCircle className="h-6 w-6 text-blue-600" />
+            <span className="text-sm font-semibold uppercase tracking-wide">Active chats</span>
           </div>
           <p className="text-3xl font-bold text-slate-900">{selected ? 1 : 0}</p>
           <p className="text-xs text-slate-400">Select a teacher to open chat</p>
@@ -63,8 +64,8 @@ export function TeachersPage() {
                   <button
                     type="button"
                     onClick={() => setSelectedId(t.id)}
-                    className={`w-full border-b border-slate-50 px-4 py-3 text-left transition hover:bg-green-50/50 ${
-                      selectedId === t.id ? 'border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-blue-50/30' : ''
+                    className={`w-full border-b border-slate-50 px-4 py-3 text-left transition hover:bg-blue-50/50 ${
+                      selectedId === t.id ? 'border-l-4 border-l-blue-500 bg-gradient-to-r from-blue-50 to-blue-50/30' : ''
                     }`}
                   >
                     <div className="font-semibold text-slate-900">{t.display_name ?? 'Unnamed'}</div>
