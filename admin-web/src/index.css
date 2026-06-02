@@ -15,9 +15,16 @@
     sans-serif;
 }
 
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
 body {
   @apply bg-canvas text-slate-900 antialiased;
   font-family: var(--font-sans);
+  overflow-x: hidden;
 }
 
 @layer components {

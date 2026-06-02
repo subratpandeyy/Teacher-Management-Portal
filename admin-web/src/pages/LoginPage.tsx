@@ -77,10 +77,10 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
         </div>
       </div>
 
-      <div className="flex flex-1 items-center justify-center px-6 py-12">
+      <div className="flex w-full flex-1 items-center justify-center px-4 py-8 sm:px-6 sm:py-12">
         <form
           onSubmit={handleSubmit}
-          className="gc-card w-full max-w-md p-8 shadow-lg"
+          className="gc-card w-full max-w-md p-6 shadow-lg sm:p-8"
         >
           <div className="mb-8 text-center lg:text-left">
             <div className="mx-auto mb-4 flex h-14 w-14 items-center bg-blue-500 justify-center rounded-2xl lg:mx-0">

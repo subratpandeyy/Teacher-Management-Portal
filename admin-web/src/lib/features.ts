@@ -87,23 +87,18 @@ function resolveBroadcastRpcTarget(opts: {
   const teacherIds = opts.teacherIds?.length ? opts.teacherIds : null;
   const groupIds = opts.groupIds?.length ? opts.groupIds : null;
 
-  let targetType = opts.targetType;
-  let targetId: string | null = null;
-
-  if (targetType === 'teacher') {
+  if (opts.targetType === 'teacher') {
     if (teacherIds?.length === 1) {
-      targetId = teacherIds[0];
-      return { targetType: 'teacher' as const, targetId, teacherIds, groupIds: null };
+      return { targetType: 'teacher' as const, targetId: teacherIds[0], teacherIds, groupIds: null };
     }
     return { targetType: 'teacher' as const, targetId: null, teacherIds, groupIds: null };
   }
 
-  if (targetType === 'group') {
-    targetId = opts.targetId ?? null;
-    return { targetType: 'group' as const, targetId, teacherIds: null, groupIds: null };
+  if (opts.targetType === 'group') {
+    return { targetType: 'group' as const, targetId: opts.targetId ?? null, teacherIds: null, groupIds: null };
   }
 
-  if (targetType === 'groups') {
+  if (opts.targetType === 'groups') {
     return { targetType: 'group' as const, targetId: null, teacherIds: null, groupIds };
   }
 

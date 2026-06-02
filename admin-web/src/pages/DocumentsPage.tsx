@@ -44,14 +44,16 @@ export function DocumentsPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    listTeachers().then(({ data }) => setTeachers((data as TeacherRow[]) ?? []));
-    fetchGroups().then(({ data }) => setGroups((data as { id: string; name: string }[]) ?? []));
-    void loadAll();
+    void (async () => {
+      const [{ data: teacherData }, { data: groupData }] = await Promise.all([
+        listTeachers(),
+        fetchGroups(),
+      ]);
+      setTeachers((teacherData as TeacherRow[]) ?? []);
+      setGroups((groupData as { id: string; name: string }[]) ?? []);
+      await Promise.all([loadDeliveries(), loadTeacherUploads()]);
+    })();
   }, []);
-
-  async function loadAll() {
-    await Promise.all([loadDeliveries(), loadTeacherUploads()]);
-  }
 
   async function loadDeliveries() {
     const { data } = await fetchDocumentDeliveries();
@@ -174,7 +176,7 @@ export function DocumentsPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 sm:space-y-8">
       <div>
         <h2 className="gc-page-title">Document Sharing</h2>
         <p className="gc-page-subtitle">
@@ -182,7 +184,10 @@ export function DocumentsPage() {
         </p>
       </div>
 
-      <form onSubmit={handleUpload} className="gc-card max-w-xl space-y-4 p-6">
+      {/* Upload form */}
+      <form onSubmit={handleUpload} className="gc-card w-full space-y-4 p-4 sm:max-w-xl sm:p-6">
+        <h3 className="font-semibold text-slate-900">Upload &amp; assign document</h3>
+
         <input
           ref={fileInputRef}
           type="file"
@@ -204,80 +209,128 @@ export function DocumentsPage() {
               .join(', ')}
           </p>
         ) : null}
-        <select
-          className="gc-input"
-          value={targetType}
-          onChange={(e) => setTargetType(e.target.value as DocumentTargetType)}
-        >
-          <option value="all">All teachers</option>
-          <option value="group">Single group</option>
-          <option value="groups">Multiple groups</option>
-          <option value="teacher">Selected teachers</option>
-        </select>
-        {targetType === 'group' ? (
+
+        <div>
+          <label className="gc-label">Assign to</label>
           <select
-            className="w-full rounded border px-3 py-2 text-sm"
-            value={targetGroupId}
-            onChange={(e) => setTargetGroupId(e.target.value)}
-            required
+            className="gc-input"
+            value={targetType}
+            onChange={(e) => setTargetType(e.target.value as DocumentTargetType)}
           >
-            <option value="">Choose group…</option>
-            {groups.map((g) => (
-              <option key={g.id} value={g.id}>
-                {g.name}
-              </option>
-            ))}
+            <option value="all">All teachers</option>
+            <option value="group">Single group</option>
+            <option value="groups">Multiple groups</option>
+            <option value="teacher">Selected teachers</option>
           </select>
+        </div>
+
+        {targetType === 'group' ? (
+          <div>
+            <label className="gc-label">Group</label>
+            <select
+              className="gc-input"
+              value={targetGroupId}
+              onChange={(e) => setTargetGroupId(e.target.value)}
+              required
+            >
+              <option value="">Choose group…</option>
+              {groups.map((g) => (
+                <option key={g.id} value={g.id}>
+                  {g.name}
+                </option>
+              ))}
+            </select>
+          </div>
         ) : null}
+
         {targetType === 'groups' ? (
-          <div className="max-h-40 overflow-y-auto rounded border p-2 text-sm">
-            {groups.map((g) => (
-              <label key={g.id} className="flex gap-2 py-1">
-                <input
-                  type="checkbox"
-                  checked={selectedGroupIds.includes(g.id)}
-                  onChange={(e) =>
-                    setSelectedGroupIds((prev) =>
-                      e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
-                    )
-                  }
-                />
-                {g.name}
-              </label>
-            ))}
+          <div>
+            <label className="gc-label">Groups</label>
+            <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-2 text-sm">
+              {groups.map((g) => (
+                <label key={g.id} className="flex gap-2 py-1">
+                  <input
+                    type="checkbox"
+                    checked={selectedGroupIds.includes(g.id)}
+                    onChange={(e) =>
+                      setSelectedGroupIds((prev) =>
+                        e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
+                      )
+                    }
+                  />
+                  {g.name}
+                </label>
+              ))}
+            </div>
           </div>
         ) : null}
+
         {targetType === 'teacher' ? (
-          <div className="max-h-40 overflow-y-auto rounded border p-2 text-sm">
-            {teachers.map((t) => (
-              <label key={t.id} className="flex gap-2 py-1">
-                <input
-                  type="checkbox"
-                  checked={selectedTeacherIds.includes(t.id)}
-                  onChange={(e) =>
-                    setSelectedTeacherIds((prev) =>
-                      e.target.checked ? [...prev, t.id] : prev.filter((id) => id !== t.id)
-                    )
-                  }
-                />
-                {t.display_name}
-              </label>
-            ))}
+          <div>
+            <label className="gc-label">Teachers</label>
+            <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-2 text-sm">
+              {teachers.map((t) => (
+                <label key={t.id} className="flex gap-2 py-1">
+                  <input
+                    type="checkbox"
+                    checked={selectedTeacherIds.includes(t.id)}
+                    onChange={(e) =>
+                      setSelectedTeacherIds((prev) =>
+                        e.target.checked ? [...prev, t.id] : prev.filter((id) => id !== t.id)
+                      )
+                    }
+                  />
+                  {t.display_name}
+                </label>
+              ))}
+            </div>
           </div>
         ) : null}
+
         <button
           type="submit"
           disabled={uploading}
-          className="gc-btn-primary disabled:opacity-50"
+          className="gc-btn-primary w-full disabled:opacity-50 sm:w-auto"
         >
           {uploading ? 'Uploading…' : 'Upload & assign'}
         </button>
-        {message ? <p className="text-sm text-slate-700">{message}</p> : null}
+        {message ? (
+          <p className="text-sm text-slate-700">{message}</p>
+        ) : null}
       </form>
 
+      {/* From teachers — card list on mobile, table on sm+ */}
       <div>
-        <h3 className="font-semibold">From teachers</h3>
-        <div className="gc-card overflow-hidden">
+        <h3 className="mb-2 font-semibold text-slate-900">From teachers</h3>
+
+        {/* Mobile card list */}
+        <div className="gc-card divide-y sm:hidden">
+          {teacherUploads.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-slate-500">No teacher uploads yet.</p>
+          ) : (
+            teacherUploads.map((row) => (
+              <div key={row.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <div className="truncate font-medium text-sm text-slate-900">{row.title}</div>
+                  <div className="text-xs text-slate-500">{row.teacherName}</div>
+                  <div className="text-xs text-slate-400">
+                    {new Date(row.created_at).toLocaleDateString()}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 text-sm font-medium text-green-600 hover:text-green-700"
+                  onClick={() => handleOpen(row)}
+                >
+                  Open
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="gc-card hidden overflow-hidden sm:block">
           <table className="gc-table">
             <thead>
               <tr>
@@ -301,7 +354,11 @@ export function DocumentsPage() {
                       {row.teacherName} · {new Date(row.created_at).toLocaleString()}
                     </td>
                     <td className="text-right">
-                      <button type="button" className="text-sm font-medium text-green-600 hover:text-green-700" onClick={() => handleOpen(row)}>
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-green-600 hover:text-green-700"
+                        onClick={() => handleOpen(row)}
+                      >
                         Open
                       </button>
                     </td>
@@ -313,9 +370,35 @@ export function DocumentsPage() {
         </div>
       </div>
 
+      {/* Deliveries to teachers — card list on mobile, table on sm+ */}
       <div>
-        <h3 className="font-semibold">Deliveries to teachers</h3>
-        <div className="gc-card overflow-hidden">
+        <h3 className="mb-2 font-semibold text-slate-900">Deliveries to teachers</h3>
+
+        {/* Mobile card list */}
+        <div className="gc-card divide-y sm:hidden">
+          {deliveries.length === 0 ? (
+            <p className="px-4 py-8 text-center text-sm text-slate-500">No deliveries yet.</p>
+          ) : (
+            deliveries.map((row) => (
+              <div key={row.id} className="flex items-start justify-between gap-3 px-4 py-3">
+                <div className="min-w-0">
+                  <div className="truncate font-medium text-sm text-slate-900">{row.title}</div>
+                  <div className="text-xs text-slate-500">{row.teacherName}</div>
+                </div>
+                <button
+                  type="button"
+                  className="shrink-0 text-sm font-medium text-green-600 hover:text-green-700"
+                  onClick={() => handleOpen(row)}
+                >
+                  Open
+                </button>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Desktop table */}
+        <div className="gc-card hidden overflow-hidden sm:block">
           <table className="gc-table">
             <thead>
               <tr>
@@ -337,7 +420,11 @@ export function DocumentsPage() {
                     <td className="font-medium">{row.title}</td>
                     <td className="text-slate-500">{row.teacherName}</td>
                     <td className="text-right">
-                      <button type="button" className="text-sm font-medium text-green-600 hover:text-green-700" onClick={() => handleOpen(row)}>
+                      <button
+                        type="button"
+                        className="text-sm font-medium text-green-600 hover:text-green-700"
+                        onClick={() => handleOpen(row)}
+                      >
                         Open
                       </button>
                     </td>

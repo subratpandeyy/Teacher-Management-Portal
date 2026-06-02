@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { TeacherRow } from '../lib/supabase';
 import { supabase } from '../lib/supabase';
 import {
@@ -27,18 +27,19 @@ export function TeacherDetailPanel({ teacher }: { teacher: TeacherRow }) {
 
   return (
     <div>
-      <h2 className="text-xl font-bold text-slate-900">{teacher.display_name ?? 'Teacher'}</h2>
+      <h2 className="text-lg font-bold text-slate-900 sm:text-xl">{teacher.display_name ?? 'Teacher'}</h2>
       <p className="text-sm text-slate-500">
         Private view for this teacher only — messages, documents, and availability are isolated.
       </p>
 
-      <div className="mt-4 flex gap-2">
+      {/* Tabs — scroll horizontally on very small screens */}
+      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
         {(['chat', 'documents', 'availability'] as Tab[]).map((t) => (
           <button
             key={t}
             type="button"
             onClick={() => setTab(t)}
-            className={`rounded-xl px-4 py-2 text-sm font-medium capitalize transition ${
+            className={`shrink-0 rounded-xl px-4 py-2 text-sm font-medium capitalize transition ${
               tab === t
                 ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm'
                 : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
@@ -145,11 +146,11 @@ function DocumentsTab({ teacherId }: { teacherId: string }) {
           ) : (
             fromTeacher.map((d) => (
               <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white p-3">
-                <span>{d.title}</span>
+                <span className="min-w-0 flex-1 truncate text-sm">{d.title}</span>
                 <button
                   type="button"
                   onClick={() => openDoc(d)}
-                  className="text-sm text-blue-600"
+                  className="shrink-0 text-sm text-blue-600"
                 >
                   Open
                 </button>
@@ -166,9 +167,9 @@ function DocumentsTab({ teacherId }: { teacherId: string }) {
             <li className="text-sm text-slate-500">No documents shared yet.</li>
           ) : (
             fromAdmin.map((d) => (
-              <li key={d.id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border bg-white p-3">
-                <span>{d.title}</span>
-                <span className="flex gap-3">
+              <li key={d.id} className="flex flex-wrap items-start justify-between gap-2 rounded-lg border bg-white p-3">
+                <span className="min-w-0 flex-1 truncate text-sm">{d.title}</span>
+                <span className="flex shrink-0 gap-3">
                   <button
                     type="button"
                     onClick={() => shareDocumentInChat(teacherId, d.storage_path, d.title, d.mime_type)}
@@ -185,7 +186,6 @@ function DocumentsTab({ teacherId }: { teacherId: string }) {
           )}
         </ul>
       </section>
-
     </div>
   );
 }
@@ -224,7 +224,7 @@ function AvailabilityTab({ teacherId }: { teacherId: string }) {
                   Every {DAYS[e.day_of_week ?? 0]} · {e.start_time.slice(0, 5)} – {e.end_time.slice(0, 5)}
                 </div>
               ) : (
-                <div className="font-medium">
+                <div className="break-words font-medium">
                   {e.start_date} → {e.end_date} · {e.start_time.slice(0, 5)} – {e.end_time.slice(0, 5)}
                 </div>
               )}
@@ -256,11 +256,11 @@ function ChatTab({ teacherId }: { teacherId: string }) {
   const [error, setError] = useState('');
   const [adminId, setAdminId] = useState<string | null>(null);
 
-  const loadMessages = async (convId: string) => {
+  const loadMessages = useCallback(async (convId: string) => {
     const { data, error: msgErr } = await fetchConversationMessages(convId, teacherId);
     if (msgErr) setError(msgErr.message);
     else setMessages((data as ChatRow[]) ?? []);
-  };
+  }, [teacherId]);
 
   useEffect(() => {
     let channel: ReturnType<typeof supabase.channel> | null = null;
@@ -290,7 +290,7 @@ function ChatTab({ teacherId }: { teacherId: string }) {
     return () => {
       if (channel) supabase.removeChannel(channel);
     };
-  }, [teacherId]);
+  }, [teacherId, loadMessages]);
 
   async function send(e: FormEvent) {
     e.preventDefault();
@@ -333,133 +333,132 @@ function ChatTab({ teacherId }: { teacherId: string }) {
   }
 
   return (
-    <div className="max-w-2xl">
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
-        <div className="mb-4 max-h-80 overflow-y-auto rounded-xl shadow-sm bg-white p-4">
-          {messages.map((m) => {
-            const isAdmin = m.sender_id === adminId;
+    <div className="w-full">
+      {error ? <p className="mb-2 text-sm text-red-600">{error}</p> : null}
 
-            return (
+      {/* Message list */}
+      <div className="mb-4 max-h-72 overflow-y-auto rounded-xl bg-white p-3 shadow-sm sm:max-h-80 sm:p-4">
+        {messages.length === 0 ? (
+          <p className="py-6 text-center text-sm text-slate-400">No messages yet.</p>
+        ) : null}
+        {messages.map((m) => {
+          const isAdmin = m.sender_id === adminId;
+
+          return (
+            <div
+              key={m.id}
+              className={`mb-3 flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
+            >
               <div
-                key={m.id}
-                className={`mb-3 flex ${
-                  isAdmin ? 'justify-end' : 'justify-start'
+                className={`group max-w-[85%] rounded-xl px-3 py-2.5 shadow-sm sm:max-w-[75%] sm:px-4 sm:py-3 ${
+                  isAdmin ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-900'
                 }`}
               >
-                <div
-                  className={`group max-w-[75%] rounded-xl px-4 py-3 shadow-sm ${
-                    isAdmin
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-slate-100 text-slate-900'
-                  }`}
-                >
-                  <div className="mb-2 flex items-center justify-between gap-4">
-                    <span
-                      className={`text-xs font-semibold ${
-                        isAdmin ? 'text-blue-400' : 'text-slate-700'
-                      }`}
-                    >
-                      {isAdmin ? 'Admin' : 'Teacher'}
-                    </span>
-
-                    <span
-                      className={`text-xs ${
-                        isAdmin ? 'text-blue-400' : 'text-slate-800'
-                      }`}
-                    >
-                      {new Date(m.created_at).toLocaleTimeString()}
-                    </span>
-                  </div>
-
-                  <p
-                    className={
-                      m.deleted_at
-                        ? 'italic opacity-70'
-                        : ''
-                    }
+                <div className="mb-1 flex items-center justify-between gap-3">
+                  <span
+                    className={`text-xs font-semibold ${
+                      isAdmin ? 'text-blue-200' : 'text-slate-500'
+                    }`}
                   >
-                    {m.deleted_at
-                      ? 'Message deleted'
-                      : m.body}
-                  </p>
+                    {isAdmin ? 'Admin' : 'Teacher'}
+                  </span>
+                  <span className={`text-xs ${isAdmin ? 'text-blue-300' : 'text-slate-400'}`}>
+                    {new Date(m.created_at).toLocaleTimeString()}
+                  </span>
+                </div>
 
-                  {m.attachment_url && !m.deleted_at ? (
+                <p className={`break-words text-sm ${m.deleted_at ? 'italic opacity-70' : ''}`}>
+                  {m.deleted_at ? 'Message deleted' : m.body}
+                </p>
+
+                {m.attachment_url && !m.deleted_at ? (
+                  <button
+                    type="button"
+                    className={`mt-2 block text-xs underline ${
+                      isAdmin ? 'text-blue-100' : 'text-blue-600'
+                    }`}
+                    onClick={() => {
+                      void getSignedUrl(
+                        m.attachment_url!,
+                        STORAGE_BUCKETS.chatFiles
+                      ).then(({ data }) => {
+                        if (data?.signedUrl) {
+                          window.open(data.signedUrl);
+                        }
+                      });
+                    }}
+                  >
+                    📎 {m.attachment_name ?? 'Attachment'}
+                  </button>
+                ) : null}
+
+                {!m.deleted_at && isAdmin ? (
+                  <div className="mt-2 flex gap-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
                     <button
                       type="button"
-                      className={`mt-2 block text-xs underline ${
-                        isAdmin
-                          ? 'text-blue-100'
-                          : 'text-blue-600'
-                      }`}
+                      className="text-xs text-blue-200"
                       onClick={() => {
-                        void getSignedUrl(
-                          m.attachment_url!,
-                          STORAGE_BUCKETS.chatFiles
-                        ).then(({ data }) => {
-                          if (data?.signedUrl) {
-                            window.open(data.signedUrl);
-                          }
+                        setEditingId(m.id);
+                        setText(m.body);
+                      }}
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      className="text-xs text-red-300"
+                      onClick={() => {
+                        void softDeleteChatMessage(m.id).then(() => {
+                          if (conversationId) void loadMessages(conversationId);
                         });
                       }}
                     >
-                      📎 {m.attachment_name ?? 'Attachment'}
+                      Delete
                     </button>
-                  ) : null}
-
-                  {!m.deleted_at && isAdmin ? (
-                    <div className="mt-2 flex gap-3 opacity-0 transition-opacity group-hover:opacity-100">
-                      <button
-                        type="button"
-                        className="text-xs text-blue-100"
-                        onClick={() => {
-                          setEditingId(m.id);
-                          setText(m.body);
-                        }}
-                      >
-                        Edit
-                      </button>
-
-                      <button
-                        type="button"
-                        className="text-xs text-red-200"
-                        onClick={() => {
-                          void softDeleteChatMessage(m.id).then(() => {
-                            if (conversationId) {
-                              void loadMessages(conversationId);
-                            }
-                          });
-                        }}
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
+                  </div>
+                ) : null}
               </div>
-            );
-          })}
-        </div>
+            </div>
+          );
+        })}
+      </div>
 
-      {editingId ? <p className="mb-2 text-xs text-blue-600">Editing message</p> : null}
+      {editingId ? (
+        <p className="mb-2 text-xs text-blue-600">Editing message — send to save</p>
+      ) : null}
+
+      {/* Composer */}
       <form onSubmit={send} className="flex gap-2">
         <input
-          className="flex-1 rounded border px-3 py-2 text-sm"
+          className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="Reply to teacher…"
         />
-        <button type="submit" className="rounded-lg bg-blue-600 px-4 py-2 text-sm text-white">
+        <button
+          type="submit"
+          className="shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
+          disabled={!text.trim()}
+        >
           {editingId ? 'Save' : 'Send'}
         </button>
       </form>
-      <input
-        type="file"
-        className="mt-2 text-xs"
-        onChange={(e) => {
-          const f = e.target.files?.[0];
-          if (f) attachFile(f);
-        }}
-      />
+
+      {/* File attachment */}
+      <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-slate-500">
+        <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 hover:bg-slate-100">
+          📎 Attach file
+        </span>
+        <input
+          type="file"
+          className="sr-only"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) void attachFile(f);
+            e.target.value = '';
+          }}
+        />
+      </label>
     </div>
   );
 }
