@@ -45,8 +45,8 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
 
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-white">
-      <div className="pointer-events-none absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-50" />
-      <div className="pointer-events-none absolute bottom-0 left-0 h-64 w-64 rounded-full bg-green-50" />
+      <div className="pointer-events-none lg:block sm:hidden absolute -right-24 -top-24 h-80 w-80 rounded-full bg-blue-50" />
+      <div className="pointer-events-none lg:block sm:hidden absolute bottom-0 left-0 h-64 w-64 rounded-full bg-green-50" />
 
       <div className="hidden flex-1 flex-col justify-center bg-gradient-to-br from-green-50 via-white to-blue-50 px-16 lg:flex">
         <div className="max-w-md">
@@ -83,8 +83,9 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
           className="gc-card w-full max-w-md p-6 shadow-lg sm:p-8"
         >
           <div className="mb-8 text-center lg:text-left">
-            <div className="mx-auto mb-4 flex h-14 w-14 items-center bg-blue-500 justify-center rounded-2xl lg:mx-0">
-              <ShieldUser className="h-7 w-7 text-white" strokeWidth={2} /> 
+            <div className="mx-auto mb-4 flex h-14 w-14 items-center bg-white shadow-lg justify-center rounded-2xl lg:mx-0">
+              {/* <ShieldUser className="h-7 w-7 text-white" strokeWidth={2} />  */}
+              <img src={logo} alt='GenieClasses' className="h-14 w-14" />
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Genieclasses Teachers Portal</h1>
             <p className="mt-1 text-sm text-slate-500">Admin sign in</p>
