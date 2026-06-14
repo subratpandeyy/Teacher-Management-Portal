@@ -496,7 +496,7 @@ export function GroupsPage() {
                           <button
                             type="button"
                             onClick={handleAddMember}
-                            className="shrink-0 rounded-xl bg-slate-850 px-5 py-2 text-sm font-semibold text-white hover:bg-slate-750"
+                            className="shrink-0 rounded-xl bg-blue-500 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-650"
                           >
                             Add Member
                           </button>
