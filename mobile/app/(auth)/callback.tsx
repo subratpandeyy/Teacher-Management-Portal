@@ -17,7 +17,7 @@ export default function AuthCallbackScreen() {
       if (cancelled) return;
 
       if (result.ok) {
-        router.replace('/(teacher)/inbox');
+        router.replace('/');
         return;
       }
 

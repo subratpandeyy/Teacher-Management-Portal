@@ -2,10 +2,14 @@ import { useState, type FormEvent } from 'react';
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import logo from '../assets/logo.png';
+import type { UserRole } from '../../../shared/types';
 
 export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [displayName, setDisplayName] = useState('');
+  const [role, setRole] = useState<UserRole>('teacher');
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState('');
@@ -15,6 +19,29 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
     e.preventDefault();
     setLoading(true);
     setError('');
+
+    if (mode === 'signup') {
+      const { error: signUpErr } = await supabase.auth.signUp({
+        email: email.trim(),
+        password,
+        options: {
+          data: {
+            display_name: displayName,
+            role: role,
+          }
+        }
+      });
+      if (signUpErr) {
+        setError(signUpErr.message);
+        setLoading(false);
+        return;
+      }
+      setMode('login');
+      setError('Account created! Please check your email for verification, then sign in.');
+      setLoading(false);
+      return;
+    }
+
     const { error: signErr } = await supabase.auth.signInWithPassword({
       email: email.trim(),
       password,
@@ -32,9 +59,10 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
       .eq('id', user.user!.id)
       .single();
 
-    if (profile?.role !== 'admin') {
+    const allowedRoles = ['admin', 'coordinator', 'teacher'];
+    if (!profile || !allowedRoles.includes(profile.role)) {
       await supabase.auth.signOut();
-      setError('This account is not an admin. Use the mobile app for teachers.');
+      setError('Unauthorized access. Please contact your administrator.');
       setLoading(false);
       return;
     }
@@ -88,14 +116,52 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
               <img src={logo} alt='GenieClasses' className="h-14 w-14" />
             </div>
             <h1 className="text-2xl font-bold text-slate-900">Genieclasses Teachers Portal</h1>
-            <p className="mt-1 text-sm text-slate-500">Admin sign in</p>
+            <p className="mt-1 text-sm text-slate-500">{mode === 'login' ? 'Admin sign in' : 'Create an account'}</p>
           </div>
 
           {error ? (
-            <p className="mb-4 rounded-xl border border-red-100 bg-red-50 px-3 py-2.5 text-sm text-red-700">
+            <p className={`mb-4 rounded-xl border px-3 py-2.5 text-sm ${
+              error.includes('created') ? 'border-green-100 bg-green-50 text-green-700' : 'border-red-100 bg-red-50 text-red-700'
+            }`}>
               {error}
             </p>
           ) : null}
+
+          {mode === 'signup' && (
+            <>
+              <div className="mb-4">
+                <label className="gc-label" htmlFor="displayName">
+                  Full Name
+                </label>
+                <input
+                  id="displayName"
+                  className="gc-input"
+                  type="text"
+                  placeholder="John Doe"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="mb-4">
+                <label className="gc-label">Role</label>
+                <div className="flex gap-2">
+                  {(['teacher', 'coordinator'] as const).map((r) => (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setRole(r)}
+                      className={`flex-1 rounded-lg border py-2 text-sm font-medium capitalize transition-colors ${
+                        role === r ? 'border-green-500 bg-green-50 text-green-700' : 'border-slate-200 bg-white text-slate-600'
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </>
+          )}
 
           <div className="mb-4">
             <label className="gc-label" htmlFor="email">
@@ -156,8 +222,18 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
           </div>
 
           <button type="submit" disabled={loading} className="gc-btn-primary w-full py-3">
-            {loading ? 'Signing in…' : 'Sign in'}
+            {loading ? 'Processing…' : mode === 'login' ? 'Sign in' : 'Create account'}
           </button>
+
+          <div className="mt-4 text-center">
+            <button
+              type="button"
+              onClick={() => setMode(mode === 'login' ? 'signup' : 'login')}
+              className="text-sm font-medium text-green-600 hover:text-green-700"
+            >
+              {mode === 'login' ? "Don't have an account? Sign up" : 'Already have an account? Sign in'}
+            </button>
+          </div>
 
           <p className="mt-6 text-center text-xs text-slate-400">
             Teachers should use the mobile app to sign in.

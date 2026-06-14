@@ -9,6 +9,9 @@ export type Group = {
   description: string | null;
   created_by: string;
   created_at: string;
+  creator_role?: string | null;
+  type?: string;
+  membership_rules?: string | null;
 };
 
 export type GroupMember = {

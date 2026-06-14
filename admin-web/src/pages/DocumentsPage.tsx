@@ -9,6 +9,21 @@ import {
 import { openDocumentInBrowser } from '../lib/openDocument';
 import type { DocumentTargetType } from '../../../shared/types';
 import type { TeacherRow } from '../lib/supabase';
+import { 
+  FileText, 
+  Upload, 
+  Users, 
+  UserCheck, 
+  GraduationCap, 
+  Search, 
+  Loader2, 
+  Eye, 
+  Trash2,
+  Filter,
+  CheckCircle2,
+  Clock,
+  ExternalLink
+} from 'lucide-react';
 
 type DeliveryRow = {
   id: string;
@@ -40,18 +55,25 @@ export function DocumentsPage() {
   const [selectedTeacherIds, setSelectedTeacherIds] = useState<string[]>([]);
   const [files, setFiles] = useState<FileList | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState('');
+  const [search, setSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void (async () => {
-      const [{ data: teacherData }, { data: groupData }] = await Promise.all([
-        listTeachers(),
-        fetchGroups(),
-      ]);
-      setTeachers((teacherData as TeacherRow[]) ?? []);
-      setGroups((groupData as { id: string; name: string }[]) ?? []);
-      await loadAll();
+      setLoading(true);
+      try {
+        const [{ data: teacherData }, { data: groupData }] = await Promise.all([
+          listTeachers(),
+          fetchGroups(),
+        ]);
+        setTeachers((teacherData as TeacherRow[]) ?? []);
+        setGroups((groupData as { id: string; name: string }[]) ?? []);
+        await loadAll();
+      } finally {
+        setLoading(false);
+      }
     })();
   }, []);
 
@@ -62,8 +84,8 @@ export function DocumentsPage() {
   async function loadDeliveries() {
     const { data } = await fetchDocumentDeliveries();
     const rows: DeliveryRow[] = [];
-    for (const d of (data ?? []) as Record<string, unknown>[]) {
-      const doc = d.documents as Record<string, unknown> | Record<string, unknown>[] | null;
+    for (const d of (data ?? []) as any[]) {
+      const doc = d.documents as any;
       const row = Array.isArray(doc) ? doc[0] : doc;
       if (!row?.storage_path) continue;
       const teacher = d.profiles as { display_name?: string } | null;
@@ -175,268 +197,175 @@ export function DocumentsPage() {
     storage_bucket?: string | null;
     mime_type?: string | null;
   }) {
+    setMessage('');
     const result = await openDocumentInBrowser(doc);
-    if (!result.ok) setMessage(result.error);
+    if (result.ok === false) setMessage(result.error);
   }
 
+  if (loading) return (
+    <div className="flex h-full items-center justify-center">
+      <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+    </div>
+  );
+
   return (
-    <div className="space-y-6 sm:space-y-8">
-      <div>
-        <h2 className="gc-page-title">Document Sharing</h2>
-        <p className="gc-page-subtitle">
-          Share files with teachers and open documents teachers send you.
-        </p>
-      </div>
-
-      {/* Upload form */}
-      <form onSubmit={handleUpload} className="gc-card w-full space-y-4 p-4 sm:max-w-xl sm:p-6">
-        <h3 className="font-semibold text-slate-900">Upload &amp; assign document</h3>
-
-        <input
-          ref={fileInputRef}
-          type="file"
-          multiple
-          className="hidden"
-          onChange={(e) => handleFilesChange(e.target.files)}
-        />
-        <button
-          type="button"
-          onClick={handleSelectFilesClick}
-          className="w-full rounded-xl border-2 border-dashed border-green-200 bg-green-50/50 px-4 py-4 text-sm font-medium text-slate-700 transition hover:border-green-300 hover:bg-green-50"
-        >
-          Select document(s)
-        </button>
-        {files?.length ? (
-          <p className="text-xs text-slate-600">
-            {Array.from(files)
-              .map((f) => f.name)
-              .join(', ')}
-          </p>
-        ) : null}
-
+    <div className="space-y-6">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <label className="gc-label">Assign to</label>
-          <select
-            className="gc-input"
-            value={targetType}
-            onChange={(e) => setTargetType(e.target.value as DocumentTargetType)}
-          >
-            <option value="all">All teachers</option>
-            <option value="group">Single group</option>
-            <option value="groups">Multiple groups</option>
-            <option value="teacher">Selected teachers</option>
-          </select>
-        </div>
-
-        {targetType === 'group' ? (
-          <div>
-            <label className="gc-label">Group</label>
-            <select
-              className="gc-input"
-              value={targetGroupId}
-              onChange={(e) => setTargetGroupId(e.target.value)}
-              required
-            >
-              <option value="">Choose group…</option>
-              {groups.map((g) => (
-                <option key={g.id} value={g.id}>
-                  {g.name}
-                </option>
-              ))}
-            </select>
-          </div>
-        ) : null}
-
-        {targetType === 'groups' ? (
-          <div>
-            <label className="gc-label">Groups</label>
-            <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-2 text-sm">
-              {groups.map((g) => (
-                <label key={g.id} className="flex gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    checked={selectedGroupIds.includes(g.id)}
-                    onChange={(e) =>
-                      setSelectedGroupIds((prev) =>
-                        e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
-                      )
-                    }
-                  />
-                  {g.name}
-                </label>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        {targetType === 'teacher' ? (
-          <div>
-            <label className="gc-label">Teachers</label>
-            <div className="max-h-40 overflow-y-auto rounded-xl border border-slate-200 p-2 text-sm">
-              {teachers.map((t) => (
-                <label key={t.id} className="flex gap-2 py-1">
-                  <input
-                    type="checkbox"
-                    checked={selectedTeacherIds.includes(t.id)}
-                    onChange={(e) =>
-                      setSelectedTeacherIds((prev) =>
-                        e.target.checked ? [...prev, t.id] : prev.filter((id) => id !== t.id)
-                      )
-                    }
-                  />
-                  {t.display_name}
-                </label>
-              ))}
-            </div>
-          </div>
-        ) : null}
-
-        <button
-          type="submit"
-          disabled={uploading}
-          className="gc-btn-primary w-full disabled:opacity-50 sm:w-auto"
-        >
-          {uploading ? 'Uploading…' : 'Upload & assign'}
-        </button>
-        {message ? (
-          <p className="text-sm text-slate-700">{message}</p>
-        ) : null}
-      </form>
-
-      {/* From teachers — card list on mobile, table on sm+ */}
-      <div>
-        <h3 className="mb-2 font-semibold text-slate-900">From teachers</h3>
-
-        {/* Mobile card list */}
-        <div className="gc-card divide-y sm:hidden">
-          {teacherUploads.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-slate-500">No teacher uploads yet.</p>
-          ) : (
-            teacherUploads.map((row) => (
-              <div key={row.id} className="flex items-start justify-between gap-3 px-4 py-3">
-                <div className="min-w-0">
-                  <div className="truncate font-medium text-sm text-slate-900">{row.title}</div>
-                  <div className="text-xs text-slate-500">{row.teacherName}</div>
-                  <div className="text-xs text-slate-400">
-                    {new Date(row.created_at).toLocaleDateString()}
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-sm font-medium text-green-600 hover:text-green-700"
-                  onClick={() => handleOpen(row)}
-                >
-                  Open
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* Desktop table */}
-        <div className="gc-card hidden overflow-hidden sm:block">
-          <table className="gc-table">
-            <thead>
-              <tr>
-                <th>Document</th>
-                <th>Teacher</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {teacherUploads.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="py-8 text-center text-slate-500">
-                    No teacher uploads yet.
-                  </td>
-                </tr>
-              ) : (
-                teacherUploads.map((row) => (
-                  <tr key={row.id}>
-                    <td className="font-medium">{row.title}</td>
-                    <td className="text-slate-500">
-                      {row.teacherName} · {new Date(row.created_at).toLocaleString()}
-                    </td>
-                    <td className="text-right">
-                      <button
-                        type="button"
-                        className="text-sm font-medium text-green-600 hover:text-green-700"
-                        onClick={() => handleOpen(row)}
-                      >
-                        Open
-                      </button>
-                    </td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+          <h2 className="text-2xl font-bold text-slate-900">Materials & Library</h2>
+          <p className="text-slate-500">Distribute materials to teachers and manage uploads.</p>
         </div>
       </div>
 
-      {/* Deliveries to teachers — card list on mobile, table on sm+ */}
-      <div>
-        <h3 className="mb-2 font-semibold text-slate-900">Deliveries to teachers</h3>
-
-        {/* Mobile card list */}
-        <div className="gc-card divide-y sm:hidden">
-          {deliveries.length === 0 ? (
-            <p className="px-4 py-8 text-center text-sm text-slate-500">No deliveries yet.</p>
-          ) : (
-            deliveries.map((row) => (
-              <div key={row.id} className="flex items-start justify-between gap-3 px-4 py-3">
-                <div className="min-w-0">
-                  <div className="truncate font-medium text-sm text-slate-900">{row.title}</div>
-                  <div className="text-xs text-slate-500">{row.teacherName}</div>
-                </div>
-                <button
-                  type="button"
-                  className="shrink-0 text-sm font-medium text-green-600 hover:text-green-700"
-                  onClick={() => handleOpen(row)}
-                >
-                  Open
-                </button>
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
+        {/* Upload Form */}
+        <div className="lg:col-span-4">
+          <form onSubmit={handleUpload} className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm space-y-6">
+            <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
+              <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
+                <Upload className="h-5 w-5" />
               </div>
-            ))
-          )}
+              <h3 className="text-lg font-bold text-slate-900">Upload Material</h3>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Distribution Target</label>
+              <select
+                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
+                value={targetType}
+                onChange={(e) => setTargetType(e.target.value as DocumentTargetType)}
+              >
+                <option value="all">Everyone</option>
+                <option value="teacher">Specific Teachers</option>
+                <option value="group">Specific Group</option>
+                <option value="groups">Multiple Groups</option>
+              </select>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-bold text-slate-700">Select Files</label>
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 cursor-pointer hover:bg-slate-50 transition-colors"
+              >
+                <FileText className="h-8 w-8 text-slate-400" />
+                <p className="text-xs font-medium text-slate-500">Click to browse or drag and drop</p>
+                {files && <p className="text-xs font-bold text-blue-600">{files.length} files selected</p>}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => handleFilesChange(e.target.files)}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              {message && (
+                <p className={`text-xs font-medium ${message.toLowerCase().includes('success') ? 'text-green-600' : 'text-rose-600'}`}>
+                  {message}
+                </p>
+              )}
+              <button
+                type="submit"
+                disabled={uploading || !files}
+                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 font-bold text-white transition-all hover:bg-blue-700 disabled:opacity-50"
+              >
+                {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+                {uploading ? 'Uploading...' : 'Start Upload'}
+              </button>
+            </div>
+          </form>
         </div>
 
-        {/* Desktop table */}
-        <div className="gc-card hidden overflow-hidden sm:block">
-          <table className="gc-table">
-            <thead>
-              <tr>
-                <th>Document</th>
-                <th>Recipient</th>
-                <th />
-              </tr>
-            </thead>
-            <tbody>
-              {deliveries.length === 0 ? (
-                <tr>
-                  <td colSpan={3} className="py-8 text-center text-slate-500">
-                    No deliveries yet.
-                  </td>
-                </tr>
-              ) : (
-                deliveries.map((row) => (
-                  <tr key={row.id}>
-                    <td className="font-medium">{row.title}</td>
-                    <td className="text-slate-500">{row.teacherName}</td>
-                    <td className="text-right">
-                      <button
-                        type="button"
-                        className="text-sm font-medium text-green-600 hover:text-green-700"
-                        onClick={() => handleOpen(row)}
-                      >
-                        Open
-                      </button>
-                    </td>
+        {/* Material Lists */}
+        <div className="lg:col-span-8 space-y-6">
+          {/* Admin Deliveries */}
+          <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900">Sent Materials</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50/50 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <tr>
+                    <th className="px-6 py-3">Document Title</th>
+                    <th className="px-6 py-3">Sent To</th>
+                    <th className="px-6 py-3 text-right">Action</th>
                   </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {deliveries.length === 0 ? (
+                    <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400">No sent materials</td></tr>
+                  ) : (
+                    deliveries.map((d) => (
+                      <tr key={d.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-blue-500" />
+                            <span className="font-medium text-slate-700 line-clamp-1">{d.title}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-500">{d.teacherName}</td>
+                        <td className="px-6 py-4 text-right">
+                          <button 
+                            onClick={() => handleOpen(d)}
+                            className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+
+          {/* Teacher Uploads */}
+          <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
+            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
+              <h3 className="font-bold text-slate-900">Teacher Submissions</h3>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm">
+                <thead className="bg-slate-50/50 text-xs font-bold uppercase tracking-wider text-slate-400">
+                  <tr>
+                    <th className="px-6 py-3">Document</th>
+                    <th className="px-6 py-3">From Teacher</th>
+                    <th className="px-6 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {teacherUploads.length === 0 ? (
+                    <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400">No submissions yet</td></tr>
+                  ) : (
+                    teacherUploads.map((u) => (
+                      <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <FileText className="h-4 w-4 text-emerald-500" />
+                            <span className="font-medium text-slate-700 line-clamp-1">{u.title}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-slate-500">{u.teacherName}</td>
+                        <td className="px-6 py-4 text-right">
+                          <button 
+                            onClick={() => handleOpen(u)}
+                            className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                          >
+                            <ExternalLink className="h-4 w-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
         </div>
       </div>
     </div>

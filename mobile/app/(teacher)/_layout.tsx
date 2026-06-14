@@ -8,24 +8,41 @@ import { LoadingScreen } from '../../components/LoadingScreen';
 import { Logo } from '../../components/Logo';
 
 const MENU_ITEMS = [
-  { route: '/(teacher)/inbox', icon: 'inbox', label: 'Inbox' },
-  { route: '/(teacher)/documents', icon: 'file-text', label: 'Documents' },
-  { route: '/(teacher)/chat', icon: 'message-circle', label: 'Chat' },
-  { route: '/(teacher)/availability', icon: 'calendar', label: 'Calendar' },
-  { route: '/(teacher)/profile', icon: 'user', label: 'Profile' },
+  { route: '/(teacher)/inbox', icon: 'inbox', label: 'Dashboard', roles: ['teacher', 'coordinator', 'student'] },
+  { route: '/(teacher)/documents', icon: 'file-text', label: 'Materials', roles: ['teacher', 'student'] },
+  { route: '/(teacher)/groups', icon: 'users', label: 'Groups', roles: ['teacher', 'coordinator', 'student'] },
+  { route: '/(teacher)/chat', icon: 'message-circle', label: 'Chat', roles: ['teacher', 'coordinator', 'student'] },
+  { route: '/(teacher)/availability', icon: 'calendar', label: 'Calendar', roles: ['teacher'] },
+  { route: '/(teacher)/profile', icon: 'user', label: 'Profile', roles: ['teacher', 'coordinator', 'student'] },
 ] as const;
 
-export default function TeacherLayout() {
-  const { session, profile, loading } = useAuth();
+export default function AppLayout() {
+  const { session, profile, loading, hasRole } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
 
   if (loading) return <LoadingScreen />;
   if (!session) return <Redirect href="/(auth)/login" />;
-  if (profile?.role !== 'teacher') {
+
+  if (profile?.role === 'admin') {
     return <Redirect href="/(auth)/login?admin=1" />;
   }
+
+  // Dynamic Route Guard
+  const currentMenuItem = MENU_ITEMS.find(item => 
+    pathname === item.route || 
+    pathname === item.route.replace('/(teacher)', '') ||
+    pathname.endsWith(item.route.split('/').pop() || '')
+  );
+
+  if (currentMenuItem && !hasRole(currentMenuItem.roles as any)) {
+    return <Redirect href="/" />;
+  }
+
+  const filteredMenuItems = MENU_ITEMS.filter(item => 
+    !item.roles || hasRole(item.roles as any)
+  );
 
   return (
     <View style={{ flex: 1 }}>
@@ -97,7 +114,7 @@ export default function TeacherLayout() {
     </Text> */}
   </View>
 
-          {MENU_ITEMS.map((item) => {
+          {filteredMenuItems.map((item) => {
             const active = pathname.includes(
               item.route.split('/').pop() || ''
             );
@@ -106,7 +123,14 @@ export default function TeacherLayout() {
               <TouchableOpacity
                 key={item.route}
                 onPress={() => {
-                  router.push(item.route as any);
+                  const targetRoute = item.label === 'Dashboard' 
+                    ? (profile?.role === 'student' 
+                        ? '/(student)/dashboard' 
+                        : (profile?.role === 'coordinator' 
+                            ? '/(coordinator)/dashboard' 
+                            : '/(teacher)/inbox'))
+                    : item.route;
+                  router.push(targetRoute as any);
                   setSidebarOpen(false);
                 }}
                 style={{

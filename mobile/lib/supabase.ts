@@ -22,9 +22,10 @@ export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
 
 export type Profile = {
   id: string;
-  role: 'teacher' | 'admin';
+  role: 'admin' | 'coordinator' | 'teacher' | 'student';
   display_name: string | null;
   push_token: string | null;
+  deleted_at?: string | null;
 };
 
 export type Conversation = {

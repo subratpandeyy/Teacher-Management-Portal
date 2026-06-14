@@ -192,12 +192,61 @@ export async function getSignedBroadcastAttachmentUrl(storagePath: string, expir
   return { url: data?.signedUrl ?? null, error };
 }
 
-// ─── Groups (own membership only) ─────────────────────────────────────────────
-export async function fetchMyGroups(teacherId: string) {
+// ─── Groups ───────────────────────────────────────────────────────────────────
+export async function fetchGroups() {
+  return supabase
+    .from('groups')
+    .select('*')
+    .order('created_at', { ascending: false });
+}
+
+export async function createGroup(name: string, description: string | null, type = 'public', membershipRules = '', userId: string) {
+  return supabase
+    .from('groups')
+    .insert({
+      name,
+      description,
+      type,
+      membership_rules: membershipRules,
+      created_by: userId
+    })
+    .select()
+    .single();
+}
+
+export async function updateGroup(id: string, name: string, description: string | null, type?: string, membershipRules?: string) {
+  return supabase
+    .from('groups')
+    .update({ name, description, type, membership_rules: membershipRules })
+    .eq('id', id);
+}
+
+export async function deleteGroup(id: string) {
+  return supabase
+    .from('groups')
+    .delete()
+    .eq('id', id);
+}
+
+export async function fetchGroupMembers(groupId: string) {
   return supabase
     .from('group_members')
-    .select('group_id, groups(id, name, description)')
-    .eq('teacher_id', teacherId);
+    .select('id, group_id, teacher_id, profiles:teacher_id(display_name, role)')
+    .eq('group_id', groupId);
+}
+
+export async function addGroupMember(groupId: string, userId: string) {
+  return supabase
+    .from('group_members')
+    .insert({ group_id: groupId, teacher_id: userId });
+}
+
+export async function removeGroupMember(groupId: string, userId: string) {
+  return supabase
+    .from('group_members')
+    .delete()
+    .eq('group_id', groupId)
+    .eq('teacher_id', userId);
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
@@ -217,20 +266,36 @@ export async function getOrCreateConversation(teacherId: string) {
   return { conversation: data, error };
 }
 
-export async function fetchChatMessages(conversationId: string, teacherId: string) {
+export async function fetchChatMessages(conversationId: string, userId: string) {
   const conv = await supabase
     .from('conversations')
-    .select('id')
+    .select('id, teacher_id')
     .eq('id', conversationId)
-    .eq('teacher_id', teacherId)
-    .single();
+    .maybeSingle();
 
-  if (conv.error) return { data: null, error: conv.error };
+  if (conv.error || !conv.data) {
+    return { data: null, error: conv.error ?? new Error('Conversation not found') };
+  }
+
+  const isOwner = conv.data.teacher_id === userId;
+  if (!isOwner) {
+    const participant = await supabase
+      .from('conversation_participants')
+      .select('conversation_id')
+      .eq('conversation_id', conversationId)
+      .eq('profile_id', userId)
+      .maybeSingle();
+
+    if (participant.error || !participant.data) {
+      return { data: null, error: participant.error ?? new Error('Not a participant') };
+    }
+  }
 
   return supabase
     .from('chat_messages')
     .select(
-      'id, conversation_id, sender_id, receiver_id, body, attachment_url, attachment_name, attachment_type, created_at, updated_at, deleted_at'
+      `id, conversation_id, sender_id, receiver_id, body, attachment_url, attachment_name, attachment_type, created_at, updated_at, deleted_at,
+      sender:profiles!chat_messages_sender_id_fkey(display_name, role)`
     )
     .eq('conversation_id', conversationId)
     .order('created_at', { ascending: true });

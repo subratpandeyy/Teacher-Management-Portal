@@ -14,4 +14,9 @@ config.resolver.nodeModulesPaths = [
   path.resolve(workspaceRoot, 'node_modules'),
 ];
 
+// Block admin-web node_modules to prevent heavy bundling/crashes
+config.resolver.blockList = [
+  new RegExp(`${path.resolve(workspaceRoot, 'admin-web/node_modules').replace(/[/\\\\]/g, '[/\\\\]')}.*`),
+];
+
 module.exports = withNativeWind(config, { input: './global.css' });

@@ -220,6 +220,9 @@ export default function ChatScreen() {
           const deleted = !!item.deleted_at;
           const hasAttachment = !!item.attachment_url && !deleted;
           const bodyOnly = item.body && !item.body.startsWith('📎');
+          const senderRole = (item as ChatMessage & { sender?: { role?: string } }).sender?.role;
+          const senderName = (item as ChatMessage & { sender?: { display_name?: string } }).sender?.display_name;
+          const roleLabel = senderRole && senderName ? `[${senderRole.toUpperCase()}] ${senderName}` : (senderName || null);
           return (
             <Pressable
               className={`mb-3 max-w-[88%] ${mine ? 'self-end' : 'self-start'}`}
@@ -253,6 +256,9 @@ export default function ChatScreen() {
                     : undefined
                 }
               >
+                {!mine && roleLabel ? (
+                  <Text className="mb-1 text-[10px] font-bold text-slate-500">{roleLabel}</Text>
+                ) : null}
                 {!deleted && bodyOnly ? (
                   <Text className={mine ? 'text-white' : 'text-slate-800'}>{item.body}</Text>
                 ) : null}

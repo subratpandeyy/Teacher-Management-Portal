@@ -21,7 +21,7 @@ const config: ExpoConfig = {
         autoVerify: true,
         data: [
           {
-            scheme: 'gcteacherportal',
+            scheme: 'gc-teacher-portal',
             host: 'auth',
             pathPrefix: '/callback',
           },

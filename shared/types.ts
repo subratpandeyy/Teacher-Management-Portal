@@ -1,5 +1,74 @@
-export type BroadcastTargetType = 'all' | 'group' | 'groups' | 'teacher';
-export type DocumentTargetType = 'all' | 'group' | 'groups' | 'teacher';
+export type UserRole = 'admin' | 'coordinator' | 'teacher' | 'student';
+
+export type Profile = {
+  id: string;
+  role: UserRole;
+  display_name: string | null;
+  push_token: string | null;
+  created_at: string;
+  phone?: string | null;
+  status?: string | null;
+  deleted_at?: string | null;
+};
+
+export type CoordinatorAssignment = {
+  id: string;
+  coordinator_id: string;
+  teacher_id: string | null;
+  student_id: string | null;
+  created_at: string;
+};
+
+export type TaskStatus = 'pending' | 'in_progress' | 'completed' | 'overdue';
+export type TaskPriority = 'low' | 'medium' | 'high';
+
+export type Task = {
+  id: string;
+  title: string;
+  description: string | null;
+  assigned_to: string;
+  assigned_by: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  due_date: string | null;
+  created_at: string;
+  updated_at: string;
+};
+
+export type DailyReport = {
+  id: string;
+  coordinator_id: string;
+  date: string;
+  completed_tasks: number;
+  target: string | null;
+  remarks: string | null;
+  created_at: string;
+};
+
+export type AttendanceStatus = 'present' | 'absent' | 'late' | 'excused';
+
+export type Attendance = {
+  id: string;
+  student_id: string;
+  teacher_id: string;
+  group_id: string | null;
+  status: AttendanceStatus;
+  date: string;
+  created_at: string;
+};
+
+export type StudentProgress = {
+  id: string;
+  student_id: string;
+  teacher_id: string;
+  subject: string;
+  completion_percentage: number;
+  remarks: string | null;
+  updated_at: string;
+};
+
+export type BroadcastTargetType = 'all' | 'group' | 'groups' | 'teacher' | 'coordinator' | 'student';
+export type DocumentTargetType = 'all' | 'group' | 'groups' | 'teacher' | 'coordinator' | 'student';
 
 export type Group = {
   id: string;
@@ -7,6 +76,9 @@ export type Group = {
   description: string | null;
   created_by: string;
   created_at: string;
+  creator_role?: UserRole | null;
+  type?: string;
+  membership_rules?: string | null;
 };
 
 export type GroupMember = {

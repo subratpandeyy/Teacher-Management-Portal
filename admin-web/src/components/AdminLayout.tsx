@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { NavLink, Outlet } from 'react-router-dom';
 import {
   FileText,
@@ -8,17 +8,56 @@ import {
   Megaphone,
   Users,
   X,
+  UserCheck,
+  GraduationCap,
+  UsersRound,
+  CheckSquare,
+  BarChart3,
+  DollarSign,
+  Settings,
+  ClipboardList,
+  MessageSquare,
+  BookOpen,
 } from 'lucide-react';
 import logo from '../assets/logo.png';
+import { useAuth } from '../core/auth/AuthContext';
+import type { UserRole } from '../../../shared/types';
 
-const links = [
-  { to: '/', label: 'Teachers & Chat', icon: LayoutDashboard },
-  { to: '/groups', label: 'Groups', icon: Users },
-  { to: '/broadcasts', label: 'Broadcasts', icon: Megaphone },
-  { to: '/documents', label: 'Documents', icon: FileText },
+interface NavItem {
+  to: string;
+  label: string;
+  icon: any;
+  allowedRoles?: UserRole[];
+}
+
+const navItems: NavItem[] = [
+  { to: '/', label: 'Dashboard', icon: LayoutDashboard },
+  { to: '/users', label: 'Users', icon: Users, allowedRoles: ['admin'] },
+  { to: '/coordinators', label: 'Coordinators', icon: UserCheck, allowedRoles: ['admin'] },
+  { to: '/teachers', label: 'Teachers', icon: GraduationCap, allowedRoles: ['admin', 'coordinator'] },
+  { to: '/students', label: 'Students', icon: UsersRound, allowedRoles: ['admin', 'coordinator'] },
+  { to: '/groups', label: 'Groups', icon: Users, allowedRoles: ['admin', 'coordinator', 'teacher'] },
+  { to: '/tasks', label: 'Tasks', icon: CheckSquare, allowedRoles: ['admin', 'coordinator'] },
+  { to: '/attendance', label: 'Attendance', icon: ClipboardList, allowedRoles: ['admin', 'coordinator', 'teacher'] },
+  { to: '/analytics', label: 'Analytics', icon: BarChart3, allowedRoles: ['admin', 'coordinator'] },
+  { to: '/finance', label: 'Finance', icon: DollarSign, allowedRoles: ['admin'] },
+  { to: '/broadcasts', label: 'Broadcasts', icon: Megaphone, allowedRoles: ['admin'] },
+  { to: '/documents', label: 'Materials', icon: BookOpen, allowedRoles: ['admin', 'coordinator', 'teacher'] },
+  { to: '/chat', label: 'Chat', icon: MessageSquare, allowedRoles: ['admin', 'coordinator', 'teacher'] },
+  { to: '/settings', label: 'Settings', icon: Settings, allowedRoles: ['admin'] },
 ];
 
 function SidebarContent({ onSignOut, onClose }: { onSignOut: () => void; onClose?: () => void }) {
+  const { profile } = useAuth();
+
+  const filteredLinks = useMemo(() => {
+    return navItems.filter(item => {
+      if (!item.allowedRoles) return true;
+      if (!profile) return false;
+      return item.allowedRoles.includes(profile.role);
+    });
+  }, [profile]);
+
   return (
     <>
       <div className="border-b border-slate-100 px-5 py-5">
@@ -28,12 +67,12 @@ function SidebarContent({ onSignOut, onClose }: { onSignOut: () => void; onClose
           </div>
           <div>
             <p className="text-md font-bold leading-tight text-slate-900">Genieclasses</p>
-            <p className="text-sm text-slate-500">Teachers Portal</p>
+            <p className="text-sm text-slate-500 capitalize">{profile?.role} Portal</p>
           </div>
         </div>
       </div>
       <nav className="flex-1 space-y-1 px-3 py-4">
-        {links.map((l) => (
+        {filteredLinks.map((l) => (
           <NavLink
             key={l.to}
             to={l.to}
@@ -64,6 +103,7 @@ function SidebarContent({ onSignOut, onClose }: { onSignOut: () => void; onClose
 
 export function AdminLayout({ onSignOut }: { onSignOut: () => void }) {
   const [drawerOpen, setDrawerOpen] = useState(false);
+  const { profile } = useAuth();
 
   return (
     <div className="flex min-h-screen bg-[#F8FAFC]">
@@ -115,9 +155,9 @@ export function AdminLayout({ onSignOut }: { onSignOut: () => void }) {
             </button>
             <div className="min-w-0 flex-1">
               <h1 className="truncate text-base font-bold text-slate-900 sm:text-lg">
-                Genieclasses Teachers Portal
+                Genieclasses {profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1) : ''} Portal
               </h1>
-              <p className="hidden text-sm text-slate-500 sm:block">Administrator dashboard</p>
+              <p className="hidden text-sm text-slate-500 sm:block capitalize">{profile?.role} dashboard</p>
             </div>
           </div>
         </header>

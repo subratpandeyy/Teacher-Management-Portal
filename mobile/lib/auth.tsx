@@ -12,6 +12,8 @@ import { getAuthRedirectUrl } from './authRedirect';
 import { subscribeToAuthDeepLinks } from './deepLinkAuth';
 import { isExpoGo } from './expoGo';
 import { supabase, type Profile } from './supabase';
+import type { UserRole } from '../../shared/types';
+import { permissionService, type Permission } from '../core/permissions/permissionService';
 
 type AuthContextValue = {
   session: Session | null;
@@ -23,10 +25,13 @@ type AuthContextValue = {
   signUp: (
     email: string,
     password: string,
-    displayName: string
+    displayName: string,
+    role: UserRole
   ) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
   refreshProfile: () => Promise<void>;
+  can: (permission: Permission) => boolean;
+  hasRole: (roles: UserRole[]) => boolean;
 };
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -43,19 +48,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [authRedirectUrl]);
 
-  const loadProfile = useCallback(async (userId: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('id, role, display_name, push_token')
-      .eq('id', userId)
-      .single();
+  const loadProfile = useCallback(async (userId: string, retries = 3) => {
+    for (let i = 0; i < retries; i++) {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, role, display_name, push_token, deleted_at')
+        .eq('id', userId)
+        .single();
 
-    if (error) {
-      console.error('loadProfile', error.message);
-      setProfile(null);
-      return;
+      if (!error && data) {
+        if (data.deleted_at) {
+          console.warn(`[auth] mobile user ${userId} has been soft-deleted. Logging out.`);
+          await supabase.auth.signOut();
+          setProfile(null);
+          return;
+        }
+        setProfile(data as Profile);
+        return;
+      }
+
+      if (i < retries - 1) {
+        // Wait 500ms before retry to allow trigger to finish
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
     }
-    setProfile(data as Profile);
+    
+    console.warn(`[auth] profile not found for user ${userId} after ${retries} attempts`);
+    setProfile(null);
   }, []);
 
   const refreshProfile = useCallback(async () => {
@@ -74,25 +93,57 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (data.session?.user) {
-        loadProfile(data.session.user.id).finally(() => setLoading(false));
-      } else {
-        setLoading(false);
-      }
-    });
+    let mounted = true;
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, nextSession) => {
+    async function initializeAuth() {
+      try {
+        const { data: { session: initialSession } } = await supabase.auth.getSession();
+        if (!mounted) return;
+
+        setSession(initialSession);
+        if (initialSession?.user) {
+          await loadProfile(initialSession.user.id);
+        }
+      } catch (err) {
+        console.error('[auth] initialization error', err);
+      } finally {
+        if (mounted) setLoading(false);
+      }
+    }
+
+    initializeAuth();
+
+    const { data: sub } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
+      if (__DEV__) console.log('[auth] onAuthStateChange', event);
+
+      if (!mounted) return;
+
+      // Avoid full-screen loading flashes on token refresh or duplicate init events
+      if (event === 'TOKEN_REFRESHED') {
+        setSession(nextSession);
+        return;
+      }
+      if (event === 'INITIAL_SESSION') {
+        setSession(nextSession);
+        return;
+      }
+
       setSession(nextSession);
+
       if (nextSession?.user) {
-        loadProfile(nextSession.user.id);
+        const showLoader = event === 'SIGNED_IN';
+        if (showLoader) setLoading(true);
+        await loadProfile(nextSession.user.id, event === 'SIGNED_IN' ? 3 : 1);
+        if (mounted && showLoader) setLoading(false);
       } else {
         setProfile(null);
       }
     });
 
-    return () => sub.subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      sub.subscription.unsubscribe();
+    };
   }, [loadProfile]);
 
   // Push: only in dev/production builds, never in Expo Go, never at module scope
@@ -132,12 +183,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const signUp = useCallback(
-    async (email: string, password: string, displayName: string) => {
+    async (email: string, password: string, displayName: string, role: UserRole) => {
       const { error } = await supabase.auth.signUp({
         email,
         password,
         options: {
-          data: { display_name: displayName, role: 'teacher' },
+          data: { display_name: displayName, role: role },
           emailRedirectTo: authRedirectUrl,
         },
       });
@@ -151,6 +202,22 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfile(null);
   }, []);
 
+  const can = useCallback(
+    (permission: Permission) => {
+      if (!profile) return false;
+      return permissionService.can(profile as any, permission);
+    },
+    [profile]
+  );
+
+  const hasRole = useCallback(
+    (roles: UserRole[]) => {
+      if (!profile) return false;
+      return roles.includes(profile.role as UserRole);
+    },
+    [profile]
+  );
+
   const value = useMemo(
     () => ({
       session,
@@ -162,6 +229,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
       refreshProfile,
+      can,
+      hasRole,
     }),
     [
       session,
@@ -172,6 +241,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signUp,
       signOut,
       refreshProfile,
+      can,
+      hasRole,
     ]
   );
 

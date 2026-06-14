@@ -1,59 +1,70 @@
 import { useCallback, useEffect, useState, type FormEvent } from 'react';
 import type { TeacherRow } from '../lib/supabase';
-import { supabase } from '../lib/supabase';
 import {
   fetchAdminDocumentsForTeacher,
-  fetchConversationMessages,
   fetchTeacherAvailability,
-  getTeacherConversation,
-  sendAdminChatMessage,
-  softDeleteChatMessage,
-  updateChatMessage,
-  uploadChatAttachment,
   fetchTeacherUploadsForAdmin,
   shareDocumentInChat,
-  getSignedUrl,
 } from '../lib/features';
 import { openDocumentInBrowser } from '../lib/openDocument';
-import { STORAGE_BUCKETS } from '../../../shared/storage';
+import { ChatTab } from '../features/chat/ChatTab';
+
+import { X } from 'lucide-react';
 
 type Tab = 'chat' | 'documents' | 'availability';
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export function TeacherDetailPanel({ teacher }: { teacher: TeacherRow }) {
+export function TeacherDetailPanel({ teacher, onClose }: { teacher: TeacherRow; onClose?: () => void }) {
   const [tab, setTab] = useState<Tab>('chat');
   const teacherId = teacher.id;
 
   return (
-    <div>
-      <h2 className="text-lg font-bold text-slate-900 sm:text-xl">{teacher.display_name ?? 'Teacher'}</h2>
-      <p className="text-sm text-slate-500">
-        Private view for this teacher only — messages, documents, and availability are isolated.
-      </p>
-
-      {/* Tabs — scroll horizontally on very small screens */}
-      <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-        {(['chat', 'documents', 'availability'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setTab(t)}
-            className={`shrink-0 rounded-xl px-4 py-2 text-sm font-medium capitalize transition ${
-              tab === t
-                ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white shadow-sm'
-                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-50'
-            }`}
+    <div className="fixed inset-y-0 right-0 z-50 w-full max-w-2xl border-l border-slate-100 bg-white shadow-2xl transition-transform duration-300 sm:w-2/3 lg:w-1/2">
+      <div className="flex h-full flex-col">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-slate-100 px-6 py-4">
+          <div>
+            <h2 className="text-xl font-bold text-slate-900">{teacher.display_name ?? 'Teacher Details'}</h2>
+            <p className="text-xs text-slate-400">ID: {teacherId}</p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="rounded-lg p-2 text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-colors"
           >
-            {t}
+            <X className="h-6 w-6" />
           </button>
-        ))}
-      </div>
+        </div>
 
-      <div className="mt-6">
-        {tab === 'chat' ? <ChatTab teacherId={teacherId} /> : null}
-        {tab === 'documents' ? <DocumentsTab teacherId={teacherId} /> : null}
-        {tab === 'availability' ? <AvailabilityTab teacherId={teacherId} /> : null}
+        <div className="flex-1 overflow-y-auto p-6">
+          <p className="text-sm text-slate-500">
+            Private view for this teacher only — messages, documents, and availability are isolated.
+          </p>
+
+          {/* Tabs */}
+          <div className="mt-6 flex gap-2 border-b border-slate-50 pb-4">
+            {(['chat', 'documents', 'availability'] as Tab[]).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setTab(t)}
+                className={`rounded-xl px-4 py-2 text-sm font-bold capitalize transition ${
+                  tab === t
+                    ? 'bg-blue-600 text-white shadow-md'
+                    : 'bg-slate-50 text-slate-500 hover:bg-slate-100'
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+
+          <div className="mt-6">
+            {tab === 'chat' ? <ChatTab teacherId={teacherId} /> : null}
+            {tab === 'documents' ? <DocumentsTab teacherId={teacherId} /> : null}
+            {tab === 'availability' ? <AvailabilityTab teacherId={teacherId} /> : null}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -233,232 +244,6 @@ function AvailabilityTab({ teacherId }: { teacherId: string }) {
           ))
         )}
       </ul>
-    </div>
-  );
-}
-
-type ChatRow = {
-  id: string;
-  sender_id: string;
-  body: string;
-  created_at: string;
-  updated_at?: string;
-  deleted_at?: string | null;
-  attachment_url?: string | null;
-  attachment_name?: string | null;
-};
-
-function ChatTab({ teacherId }: { teacherId: string }) {
-  const [conversationId, setConversationId] = useState<string | null>(null);
-  const [messages, setMessages] = useState<ChatRow[]>([]);
-  const [text, setText] = useState('');
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [error, setError] = useState('');
-  const [adminId, setAdminId] = useState<string | null>(null);
-
-  const loadMessages = useCallback(async (convId: string) => {
-    const { data, error: msgErr } = await fetchConversationMessages(convId, teacherId);
-    if (msgErr) setError(msgErr.message);
-    else setMessages((data as ChatRow[]) ?? []);
-  }, [teacherId]);
-
-  useEffect(() => {
-    let channel: ReturnType<typeof supabase.channel> | null = null;
-
-    (async () => {
-      const { data: user } = await supabase.auth.getUser();
-      if (user.user) setAdminId(user.user.id);
-
-      const { data: conv, error: convErr } = await getTeacherConversation(teacherId);
-      if (convErr || !conv) {
-        setError(convErr?.message ?? 'No conversation');
-        return;
-      }
-      setConversationId(conv.id);
-      await loadMessages(conv.id);
-
-      channel = supabase
-        .channel(`admin-chat:${conv.id}`)
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'chat_messages', filter: `conversation_id=eq.${conv.id}` },
-          () => loadMessages(conv.id)
-        )
-        .subscribe();
-    })();
-
-    return () => {
-      if (channel) supabase.removeChannel(channel);
-    };
-  }, [teacherId, loadMessages]);
-
-  async function send(e: FormEvent) {
-    e.preventDefault();
-    if (!conversationId || !text.trim() || !adminId) return;
-
-    if (editingId) {
-      const { error: err } = await updateChatMessage(editingId, text.trim());
-      if (err) setError(err.message);
-      else {
-        setEditingId(null);
-        setText('');
-        await loadMessages(conversationId);
-      }
-      return;
-    }
-
-    const { error: sendErr } = await sendAdminChatMessage(
-      conversationId,
-      adminId,
-      teacherId,
-      text.trim()
-    );
-    if (sendErr) setError(sendErr);
-    else setText('');
-  }
-
-  async function attachFile(file: File) {
-    if (!conversationId || !adminId) return;
-    const up = await uploadChatAttachment(conversationId, file);
-    if (up.error || !up.path) {
-      setError(up.error ?? 'Upload failed');
-      return;
-    }
-    await sendAdminChatMessage(conversationId, adminId, teacherId, `📎 ${file.name}`, {
-      url: up.path,
-      name: file.name,
-      type: up.mimeType,
-    });
-    await loadMessages(conversationId);
-  }
-
-  return (
-    <div className="w-full">
-      {error ? <p className="mb-2 text-sm text-red-600">{error}</p> : null}
-
-      {/* Message list */}
-      <div className="mb-4 max-h-72 overflow-y-auto rounded-xl bg-white p-3 shadow-sm sm:max-h-80 sm:p-4">
-        {messages.length === 0 ? (
-          <p className="py-6 text-center text-sm text-slate-400">No messages yet.</p>
-        ) : null}
-        {messages.map((m) => {
-          const isAdmin = m.sender_id === adminId;
-
-          return (
-            <div
-              key={m.id}
-              className={`mb-3 flex ${isAdmin ? 'justify-end' : 'justify-start'}`}
-            >
-              <div
-                className={`group max-w-[85%] rounded-xl px-3 py-2.5 shadow-sm sm:max-w-[75%] sm:px-4 sm:py-3 ${
-                  isAdmin ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-900'
-                }`}
-              >
-                <div className="mb-1 flex items-center justify-between gap-3">
-                  <span
-                    className={`text-xs font-semibold ${
-                      isAdmin ? 'text-blue-200' : 'text-slate-500'
-                    }`}
-                  >
-                    {isAdmin ? 'Admin' : 'Teacher'}
-                  </span>
-                  <span className={`text-xs ${isAdmin ? 'text-blue-300' : 'text-slate-400'}`}>
-                    {new Date(m.created_at).toLocaleTimeString()}
-                  </span>
-                </div>
-
-                <p className={`break-words text-sm ${m.deleted_at ? 'italic opacity-70' : ''}`}>
-                  {m.deleted_at ? 'Message deleted' : m.body}
-                </p>
-
-                {m.attachment_url && !m.deleted_at ? (
-                  <button
-                    type="button"
-                    className={`mt-2 block text-xs underline ${
-                      isAdmin ? 'text-blue-100' : 'text-blue-600'
-                    }`}
-                    onClick={() => {
-                      void getSignedUrl(
-                        m.attachment_url!,
-                        STORAGE_BUCKETS.chatFiles
-                      ).then(({ data }) => {
-                        if (data?.signedUrl) {
-                          window.open(data.signedUrl);
-                        }
-                      });
-                    }}
-                  >
-                    📎 {m.attachment_name ?? 'Attachment'}
-                  </button>
-                ) : null}
-
-                {!m.deleted_at && isAdmin ? (
-                  <div className="mt-2 flex gap-3 opacity-0 transition-opacity group-hover:opacity-100 group-focus-within:opacity-100">
-                    <button
-                      type="button"
-                      className="text-xs text-blue-200"
-                      onClick={() => {
-                        setEditingId(m.id);
-                        setText(m.body);
-                      }}
-                    >
-                      Edit
-                    </button>
-                    <button
-                      type="button"
-                      className="text-xs text-red-300"
-                      onClick={() => {
-                        void softDeleteChatMessage(m.id).then(() => {
-                          if (conversationId) void loadMessages(conversationId);
-                        });
-                      }}
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {editingId ? (
-        <p className="mb-2 text-xs text-blue-600">Editing message — send to save</p>
-      ) : null}
-
-      {/* Composer */}
-      <form onSubmit={send} className="flex gap-2">
-        <input
-          className="min-w-0 flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
-          value={text}
-          onChange={(e) => setText(e.target.value)}
-          placeholder="Reply to teacher…"
-        />
-        <button
-          type="submit"
-          className="shrink-0 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-60"
-          disabled={!text.trim()}
-        >
-          {editingId ? 'Save' : 'Send'}
-        </button>
-      </form>
-
-      {/* File attachment */}
-      <label className="mt-2 flex cursor-pointer items-center gap-2 text-xs text-slate-500">
-        <span className="rounded border border-slate-200 bg-slate-50 px-2 py-1 hover:bg-slate-100">
-          📎 Attach file
-        </span>
-        <input
-          type="file"
-          className="sr-only"
-          onChange={(e) => {
-            const f = e.target.files?.[0];
-            if (f) void attachFile(f);
-            e.target.value = '';
-          }}
-        />
-      </label>
     </div>
   );
 }

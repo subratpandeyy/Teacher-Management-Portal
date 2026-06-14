@@ -25,7 +25,10 @@ export async function assertAdmin() {
     .select('role')
     .eq('id', user.user.id)
     .single();
-  if (profile?.role !== 'admin') throw new Error('Admin access required');
+  const allowedRoles = ['admin', 'coordinator', 'teacher'];
+  if (!profile || !allowedRoles.includes(profile.role)) {
+    throw new Error('Authorized access required');
+  }
   return user.user.id;
 }
 
@@ -40,18 +43,18 @@ export async function fetchGroups() {
   return supabase.from('groups').select('*').order('created_at', { ascending: false });
 }
 
-export async function createGroup(name: string, description: string | null) {
+export async function createGroup(name: string, description: string | null, type = 'public', membershipRules = '') {
   const adminId = await assertAdmin();
   return supabase
     .from('groups')
-    .insert({ name, description, created_by: adminId })
+    .insert({ name, description, created_by: adminId, type, membership_rules: membershipRules })
     .select()
     .single();
 }
 
-export async function updateGroup(id: string, name: string, description: string | null) {
+export async function updateGroup(id: string, name: string, description: string | null, type?: string, membershipRules?: string) {
   await assertAdmin();
-  return supabase.from('groups').update({ name, description }).eq('id', id);
+  return supabase.from('groups').update({ name, description, type, membership_rules: membershipRules }).eq('id', id);
 }
 
 export async function deleteGroup(id: string) {
@@ -145,7 +148,7 @@ export async function uploadBroadcastAttachmentFile(broadcastId: string, file: F
     contentType: file.type || undefined,
   });
 
-  if (!uploaded.ok) {
+  if (uploaded.ok === false) {
     return { error: uploaded.error, storagePath: null as string | null, signedUrl: null as string | null };
   }
 
@@ -329,8 +332,8 @@ export async function adminUploadDocument(
     contentType: file.type || undefined,
   });
 
-  if (!uploaded.ok) {
-    return { error: uploaded.error };
+  if (uploaded.ok === false) {
+    return { error: uploaded.error, documentId: null, signedUrl: null };
   }
 
   const t = resolveDocumentRpcTarget(opts);
@@ -426,11 +429,16 @@ export async function getSignedUrl(
 // ─── Chat ─────────────────────────────────────────────────────────────────────
 export async function getTeacherConversation(teacherId: string) {
   await assertAdmin();
+  const { data: convId, error: rpcErr } = await supabase.rpc('ensure_teacher_conversation', {
+    p_teacher_id: teacherId,
+  });
+  if (rpcErr) return { data: null, error: rpcErr };
+
   return supabase
     .from('conversations')
     .select('id, teacher_id, created_at')
-    .eq('teacher_id', teacherId)
-    .single();
+    .eq('id', convId as string)
+    .maybeSingle();
 }
 
 export async function fetchConversationMessages(conversationId: string, teacherId: string) {
@@ -536,7 +544,7 @@ export async function uploadChatAttachment(conversationId: string, file: File) {
     file,
     contentType: file.type || undefined,
   });
-  if (!uploaded.ok) {
+  if (uploaded.ok === false) {
     return { error: uploaded.error, path: null, name: null, mimeType: null, signedUrl: null };
   }
   return {

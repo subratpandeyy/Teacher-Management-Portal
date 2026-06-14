@@ -26,6 +26,7 @@ export default function LoginScreen() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [role, setRole] = useState<'teacher' | 'student' | 'coordinator'>('teacher');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -44,14 +45,15 @@ export default function LoginScreen() {
     const result =
       mode === 'login'
         ? await signIn(email.trim(), password)
-        : await signUp(email.trim(), password, displayName.trim());
+        : await signUp(email.trim(), password, displayName.trim(), role);
     setLoading(false);
     if (result.error) {
       setError(result.error);
       return;
     }
     if (mode === 'login') {
-      router.replace('/(teacher)/inbox');
+      // Route through index so role-based redirects apply after profile loads
+      router.replace('/');
     } else {
       setInfo(
         `Check your email to confirm your account. Open the link on this device so the app can complete sign-in (${authRedirectUrl}).`
@@ -119,6 +121,27 @@ export default function LoginScreen() {
           ) : null}
 
           <ErrorBanner message={error} onDismiss={() => setError('')} />
+
+          {isSignup ? (
+            <View className="mb-4">
+              <Text className="mb-1.5 text-sm font-medium text-slate-700">I am a...</Text>
+              <View className="flex-row gap-2">
+                {(['teacher', 'student', 'coordinator'] as const).map((r) => (
+                  <Pressable
+                    key={r}
+                    onPress={() => setRole(r)}
+                    className={`flex-1 rounded-xl border py-2.5 items-center ${
+                      role === r ? 'bg-accent-blue-50 border-accent-blue-200' : 'bg-slate-50 border-slate-200'
+                    }`}
+                  >
+                    <Text className={`text-xs font-medium capitalize ${role === r ? 'text-accent-blue-700' : 'text-slate-500'}`}>
+                      {r}
+                    </Text>
+                  </Pressable>
+                ))}
+              </View>
+            </View>
+          ) : null}
 
           {isSignup ? (
             <View className="mb-4">
