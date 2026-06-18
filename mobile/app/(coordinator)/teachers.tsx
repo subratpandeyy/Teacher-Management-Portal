@@ -144,7 +144,7 @@ export default function CoordinatorTeachers() {
               {selectedTeacher.phone && <Text className="text-slate-500 text-xs">{selectedTeacher.phone}</Text>}
             </View>
             <View className={`px-2.5 py-1 rounded-full ${selectedTeacher.status === 'active' ? 'bg-green-50' : 'bg-red-50'}`}>
-              <Text className={`text-xs font-semibold uppercase ${selectedTeacher.status === 'active' ? 'text-green-600' : 'text-red-600'}`}>
+              <Text className={`text-xs font-semibold uppercase ${selectedTeacher.status === 'active' ? 'text-blue-600' : 'text-red-600'}`}>
                 {selectedTeacher.status}
               </Text>
             </View>

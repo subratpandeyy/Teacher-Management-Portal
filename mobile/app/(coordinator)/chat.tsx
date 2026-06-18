@@ -13,13 +13,17 @@ import {
 } from 'react-native';
 import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
+import { markConversationRead } from '../../lib/chatService';
+import { useUnreadMessagesContext } from '../../lib/UnreadMessagesContext';
 import { Card } from '../../components/ui/Card';
 
 export default function CoordinatorChat() {
   const { profile } = useAuth();
+  const { refresh: refreshUnread } = useUnreadMessagesContext();
   const [channels, setChannels] = useState<any[]>([]);
   const [loadingChannels, setLoadingChannels] = useState(true);
   const [selectedRecipient, setSelectedRecipient] = useState<any | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   // Chat window state
   const [conversationId, setConversationId] = useState<string | null>(null);
@@ -30,42 +34,60 @@ export default function CoordinatorChat() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
 
-  // Load chat targets: assigned teachers, assigned students, and admins
+  // Load chat targets: assigned teachers/students + admin + other coordinators
   const fetchChatTargets = useCallback(async () => {
     if (!profile) return;
     try {
-      // 1. Get coordinator scope users
-      const { data: allAssigns } = await supabase
+      const targetIds = new Set<string>();
+
+      // 1. Get assigned teachers
+      const { data: teacherAssignments } = await supabase
         .from('coordinator_assignments')
-        .select('*')
-        .order('created_at', { ascending: true });
+        .select('teacher_id')
+        .eq('coordinator_id', profile.id)
+        .not('teacher_id', 'is', null);
 
-      const latestUserMap = new Map();
-      for (const a of allAssigns || []) {
-        if (a.teacher_id) latestUserMap.set(a.teacher_id, a.coordinator_id);
-        if (a.student_id) latestUserMap.set(a.student_id, a.coordinator_id);
+      if (teacherAssignments) {
+        teacherAssignments.forEach(a => { if (a.teacher_id) targetIds.add(a.teacher_id); });
       }
 
-      const inScopeUserIds: string[] = [];
-      latestUserMap.forEach((coordId, userId) => {
-        if (coordId === profile.id) {
-          inScopeUserIds.push(userId);
-        }
-      });
+      // 2. Get assigned students
+      const { data: studentAssignments } = await supabase
+        .from('coordinator_assignments')
+        .select('student_id')
+        .eq('coordinator_id', profile.id)
+        .not('student_id', 'is', null);
 
-      // 2. Fetch profiles (teachers/students in scope + all admins)
-      let query = supabase
+      if (studentAssignments) {
+        studentAssignments.forEach(a => { if (a.student_id) targetIds.add(a.student_id); });
+      }
+
+      // 3. Get admins and other coordinators
+      const { data: staffProfiles } = await supabase
         .from('profiles')
-        .select('id, display_name, role, email')
-        .is('deleted_at', null);
+        .select('id, display_name, role')
+        .is('deleted_at', null)
+        .neq('id', profile.id)
+        .in('role', ['admin', 'coordinator']);
 
-      if (inScopeUserIds.length > 0) {
-        query = query.or(`id.in.(${inScopeUserIds.join(',')}),role.eq.admin`);
-      } else {
-        query = query.eq('role', 'admin');
+      if (staffProfiles) {
+        staffProfiles.forEach(p => targetIds.add(p.id));
       }
 
-      const { data: profiles } = await query.order('role').order('display_name');
+      if (targetIds.size === 0) {
+        setChannels([]);
+        return;
+      }
+
+      const { data: profiles, error: profErr } = await supabase
+        .from('profiles')
+        .select('id, display_name, role')
+        .is('deleted_at', null)
+        .in('id', Array.from(targetIds))
+        .order('role')
+        .order('display_name');
+
+      if (profErr) throw profErr;
       setChannels(profiles || []);
     } catch (err) {
       console.error('Error fetching chat targets:', err);
@@ -88,6 +110,9 @@ export default function CoordinatorChat() {
           sender_id,
           body,
           created_at,
+          updated_at,
+          deleted_at,
+          edited_at,
           sender:profiles!chat_messages_sender_id_fkey(display_name, role)
         `)
         .eq('conversation_id', convId)
@@ -98,6 +123,12 @@ export default function CoordinatorChat() {
       console.error('Error fetching messages:', err);
     }
   }, []);
+
+  const loadMessagesRef = useRef<((convId: string) => Promise<void>) | undefined>(undefined);
+
+  useEffect(() => {
+    loadMessagesRef.current = loadMessages;
+  }, [loadMessages]);
 
   const handleSelectRecipient = async (recipient: any) => {
     setSelectedRecipient(recipient);
@@ -111,7 +142,9 @@ export default function CoordinatorChat() {
 
       if (error) throw error;
       setConversationId(convId);
+      await markConversationRead(convId, profile!.id);
       await loadMessages(convId);
+      void refreshUnread();
     } catch (err: any) {
       Alert.alert('Error', err?.message || 'Failed to start chat');
       setSelectedRecipient(null);
@@ -120,12 +153,21 @@ export default function CoordinatorChat() {
     }
   };
 
+  const subId = useRef(0);
+
   // Realtime subscription
   useEffect(() => {
     if (!conversationId) return;
 
+    const id = ++subId.current;
+    const channelName = `coord-chat:${conversationId}:${id}`;
     const channel = supabase
-      .channel(`coord-chat:${conversationId}`)
+      .channel(channelName, {
+        config: {
+          broadcast: { self: false },
+          presence: { key: '' },
+        },
+      })
       .on(
         'postgres_changes',
         {
@@ -135,15 +177,18 @@ export default function CoordinatorChat() {
           filter: `conversation_id=eq.${conversationId}`
         },
         () => {
-          void loadMessages(conversationId);
+          if (loadMessagesRef.current) void loadMessagesRef.current(conversationId);
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Channel ${channelName} status:`, status);
+      });
 
     return () => {
+      console.log('Removing channel:', channelName);
       supabase.removeChannel(channel);
     };
-  }, [conversationId, loadMessages]);
+  }, [conversationId]);
 
   const handleSend = async () => {
     if (!conversationId || !text.trim() || !profile) return;
@@ -156,7 +201,7 @@ export default function CoordinatorChat() {
         // Edit existing message
         const { error } = await supabase
           .from('chat_messages')
-          .update({ body: trimmed, updated_at: new Date().toISOString() })
+          .update({ body: trimmed, edited_at: new Date().toISOString() })
           .eq('id', editingId);
 
         if (error) throw error;
@@ -199,7 +244,7 @@ export default function CoordinatorChat() {
           try {
             const { error } = await supabase
               .from('chat_messages')
-              .update({ deleted_at: new Date().toISOString(), body: 'Message deleted' })
+              .update({ deleted_at: new Date().toISOString() })
               .eq('id', msg.id);
 
             if (error) throw error;
@@ -266,23 +311,32 @@ export default function CoordinatorChat() {
             onContentSizeChange={() => listRef.current?.scrollToEnd({ animated: true })}
             renderItem={({ item }) => {
               const isMine = item.sender_id === profile!.id;
+              const deleted = !!item.deleted_at;
+              const isEdited = item.edited_at && item.edited_at !== item.created_at;
               return (
                 <Pressable
-                  onLongPress={() => handleLongPress(item)}
+                  onLongPress={() => !deleted && handleLongPress(item)}
                   className={`mb-3 max-w-[80%] p-3.5 rounded-2xl ${
                     isMine ? 'self-end bg-emerald-500 rounded-tr-none' : 'self-start bg-white border border-slate-100 rounded-tl-none'
-                  }`}
+                  } ${deleted ? 'opacity-60' : ''}`}
                 >
-                  {!isMine && (
+                  {!isMine && !deleted && (
                     <Text className="text-[10px] font-bold text-slate-400 mb-1">
                       [{item.sender?.role?.toUpperCase()}] {item.sender?.display_name}
                     </Text>
                   )}
-                  <Text className={`text-sm ${isMine ? 'text-white font-medium' : 'text-slate-800'}`}>
-                    {item.body}
-                  </Text>
+                  {deleted ? (
+                    <Text className={`text-sm italic ${isMine ? 'text-emerald-100' : 'text-slate-500'}`}>
+                      Message deleted
+                    </Text>
+                  ) : (
+                    <Text className={`text-sm ${isMine ? 'text-white font-medium' : 'text-slate-800'}`}>
+                      {item.body}
+                    </Text>
+                  )}
                   <Text className={`text-[8px] text-right mt-1.5 ${isMine ? 'text-emerald-100' : 'text-slate-400'}`}>
                     {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    {isEdited ? ' · edited' : ''}
                   </Text>
                 </Pressable>
               );

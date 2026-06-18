@@ -68,7 +68,7 @@ export type StudentProgress = {
 };
 
 export type BroadcastTargetType = 'all' | 'group' | 'groups' | 'teacher' | 'coordinator' | 'student';
-export type DocumentTargetType = 'all' | 'group' | 'groups' | 'teacher' | 'coordinator' | 'student';
+export type DocumentTargetType = 'all' | 'group' | 'groups' | 'teacher' | 'coordinator' | 'student' | 'teacher_role';
 
 export type Group = {
   id: string;
@@ -152,4 +152,5 @@ export type ChatMessage = {
   created_at: string;
   updated_at: string;
   deleted_at: string | null;
+  edited_at: string | null;
 };

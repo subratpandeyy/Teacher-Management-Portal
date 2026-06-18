@@ -71,92 +71,113 @@ export function TaskCreateForm({ onClose, onCreated }: TaskCreateFormProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-        <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-bold text-slate-900">New Task</h3>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+    <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="task-modal-title">
+      <div className="modal max-w-lg">
+        <div className="modal-header">
+          <h3 id="task-modal-title" className="modal-title">New Task</h3>
+          <button type="button" onClick={onClose} className="btn-ghost rounded-lg p-1.5" aria-label="Close modal">
             <X className="h-5 w-5" />
           </button>
         </div>
 
-        {error ? <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Title</label>
-            <input
-              required
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-            />
+        {error ? (
+          <div className="mx-6 mt-4 rounded-lg bg-rose-50 px-4 py-3 text-sm text-rose-700" role="alert">
+            {error}
           </div>
+        ) : null}
 
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Description</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              rows={3}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Assign to</label>
-            <select
-              value={assignedTo}
-              onChange={(e) => setAssignedTo(e.target.value)}
-              className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-            >
-              {assignees.map((a) => (
-                <option key={a.id} value={a.id}>
-                  {a.display_name ?? 'User'} ({a.role})
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
+        <form onSubmit={handleSubmit}>
+          <div className="modal-body space-y-5">
             <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Priority</label>
-              <select
-                value={priority}
-                onChange={(e) => setPriority(e.target.value as TaskPriority)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-              >
-                <option value="low">Low</option>
-                <option value="medium">Medium</option>
-                <option value="high">High</option>
-              </select>
-            </div>
-            <div>
-              <label className="mb-1 block text-sm font-medium text-slate-700">Due date</label>
+              <label className="label" htmlFor="task-title">
+                Title <span className="text-rose-500">*</span>
+              </label>
               <input
-                type="date"
-                value={dueDate}
-                onChange={(e) => setDueDate(e.target.value)}
-                className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
+                id="task-title"
+                required
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                className="input"
+                placeholder="Enter task title"
+                aria-required="true"
               />
             </div>
+
+            <div>
+              <label className="label" htmlFor="task-desc">
+                Description
+              </label>
+              <textarea
+                id="task-desc"
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                rows={3}
+                className="textarea"
+                placeholder="Optional description..."
+              />
+            </div>
+
+            <div>
+              <label className="label" htmlFor="task-assignee">
+                Assign to <span className="text-rose-500">*</span>
+              </label>
+              <select
+                id="task-assignee"
+                value={assignedTo}
+                onChange={(e) => setAssignedTo(e.target.value)}
+                className="select"
+                aria-required="true"
+              >
+                {assignees.map((a) => (
+                  <option key={a.id} value={a.id}>
+                    {a.display_name ?? 'User'} ({a.role})
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+              <div>
+                <label className="label" htmlFor="task-priority">
+                  Priority
+                </label>
+                <select
+                  id="task-priority"
+                  value={priority}
+                  onChange={(e) => setPriority(e.target.value as TaskPriority)}
+                  className="select"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div>
+                <label className="label" htmlFor="task-due">
+                  Due date
+                </label>
+                <input
+                  id="task-due"
+                  type="date"
+                  value={dueDate}
+                  onChange={(e) => setDueDate(e.target.value)}
+                  className="input"
+                />
+              </div>
+            </div>
           </div>
 
-          <div className="flex justify-end gap-3 pt-2">
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-            >
+          <div className="modal-footer flex-col gap-2 sm:flex-row">
+            <button type="button" onClick={onClose} className="btn-secondary w-full sm:w-auto">
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+              className="btn-primary w-full sm:w-auto"
             >
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-              Create Task
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" /> : null}
+              {loading ? 'Creating…' : 'Create Task'}
             </button>
           </div>
         </form>

@@ -23,21 +23,58 @@ CREATE TABLE IF NOT EXISTS public.conversation_participants (
 CREATE INDEX IF NOT EXISTS idx_conv_part_conv ON public.conversation_participants(conversation_id);
 CREATE INDEX IF NOT EXISTS idx_conv_part_profile ON public.conversation_participants(profile_id);
 
--- 3. Migration: Backfill participants from existing conversations
-INSERT INTO public.conversation_participants (conversation_id, profile_id)
-SELECT id, teacher_id FROM public.conversations
+-- -- 3. Migration: Backfill participants from existing conversations
+-- INSERT INTO public.conversation_participants (conversation_id, profile_id)
+-- SELECT id, teacher_id FROM public.conversations
 ON CONFLICT DO NOTHING;
 
 -- Also add admin as participant to existing conversations (assuming admin is the other party)
+-- DO $$
+-- DECLARE
+--   v_admin_id UUID;
+-- BEGIN
+--   SELECT id INTO v_admin_id FROM public.profiles WHERE role = 'admin' LIMIT 1;
+--   IF v_admin_id IS NOT NULL THEN
+--     INSERT INTO public.conversation_participants (conversation_id, profile_id)
+--     SELECT id, v_admin_id FROM public.conversations
+    ON CONFLICT DO NOTHING;
+--   END IF;
+-- END $$;
+
+
+-- 3. Migration: Backfill participants from existing conversations
+
+INSERT INTO public.conversation_participants (
+  conversation_id,
+  profile_id
+)
+SELECT
+  c.id,
+  c.teacher_id
+FROM public.conversations c
+WHERE c.teacher_id IS NOT NULL
+ON CONFLICT (conversation_id, profile_id) DO NOTHING;
+
 DO $$
 DECLARE
   v_admin_id UUID;
 BEGIN
-  SELECT id INTO v_admin_id FROM public.profiles WHERE role = 'admin' LIMIT 1;
+  SELECT id
+  INTO v_admin_id
+  FROM public.profiles
+  WHERE role = 'admin'
+  LIMIT 1;
+
   IF v_admin_id IS NOT NULL THEN
-    INSERT INTO public.conversation_participants (conversation_id, profile_id)
-    SELECT id, v_admin_id FROM public.conversations
-    ON CONFLICT DO NOTHING;
+    INSERT INTO public.conversation_participants (
+      conversation_id,
+      profile_id
+    )
+    SELECT
+      c.id,
+      v_admin_id
+    FROM public.conversations c
+    ON CONFLICT (conversation_id, profile_id) DO NOTHING;
   END IF;
 END $$;
 

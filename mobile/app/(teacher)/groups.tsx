@@ -127,12 +127,15 @@ export default function GroupsScreen() {
     }
   };
 
+  const chatSubId = useRef(0);
+
   // Realtime subscription for group chat
   useEffect(() => {
     if (!conversationId) return;
 
+    const id = ++chatSubId.current;
     const channel = supabase
-      .channel(`group_chat:${conversationId}`)
+      .channel(`group_chat:${conversationId}:${id}`)
       .on(
         'postgres_changes',
         {
@@ -165,9 +168,12 @@ export default function GroupsScreen() {
             });
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Channel group_chat:${conversationId}:${id} status:`, status);
+      });
 
     return () => {
+      console.log(`Removing channel group_chat:${conversationId}:${id}`);
       supabase.removeChannel(channel);
     };
   }, [conversationId]);

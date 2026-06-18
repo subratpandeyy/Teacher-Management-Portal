@@ -15,6 +15,7 @@ import { StudentsPage } from './pages/StudentsPage';
 import { ChatPage } from './pages/ChatPage';
 import { useAuth } from './core/auth/AuthContext';
 import { ProtectedRoute, RoleGuard } from './core/auth/RoleGuard';
+import { UnreadMessagesProvider } from './core/hooks/UnreadMessagesContext';
 
 export default function App() {
   const { session, profile, loading, signOut } = useAuth();
@@ -46,7 +47,9 @@ export default function App() {
           path="/"
           element={
             <ProtectedRoute>
-              <AdminLayout onSignOut={signOut} />
+              <UnreadMessagesProvider>
+                <AdminLayout onSignOut={signOut} />
+              </UnreadMessagesProvider>
             </ProtectedRoute>
           }
         >
@@ -103,11 +106,6 @@ export default function App() {
           } />
           
           {/* Admin only routes */}
-          <Route path="finance" element={
-            <RoleGuard allowedRoles={['admin']}>
-              <div className="p-8 text-slate-500">Finance Module (Coming Soon)</div>
-            </RoleGuard>
-          } />
           <Route path="analytics" element={
              <RoleGuard allowedRoles={['admin', 'coordinator']}>
                <AnalyticsPage />

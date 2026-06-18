@@ -43,5 +43,5 @@ ALTER TABLE public.conversations DROP CONSTRAINT IF EXISTS conversations_teacher
 -- 3. Ensure conversation_participants has the creator
 -- This is already handled by Phase 6 migration usually, but good to be sure
 INSERT INTO public.conversation_participants (conversation_id, profile_id)
-SELECT id, teacher_id FROM public.conversations
+SELECT id, teacher_id FROM public.conversations WHERE teacher_id IS NOT NULL
 ON CONFLICT (conversation_id, profile_id) DO NOTHING;

@@ -13,21 +13,27 @@ interface StatsCardProps {
 
 export function StatsCard({ title, value, icon, description, trend }: StatsCardProps) {
   return (
-    <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-slate-500">{title}</p>
-          <h3 className="mt-1 text-2xl font-bold text-slate-900">{value}</h3>
+    <div className="stat-card group">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1">
+          <p className="stat-card-label">{title}</p>
+          <h3 className="stat-card-value">{value}</h3>
         </div>
-        <div className="rounded-lg bg-slate-50 p-3 text-slate-600">
+        <div className="stat-card-icon bg-green-50 text-blue-600 transition-colors duration-200 group-hover:bg-green-100">
           {icon}
         </div>
       </div>
       {(description || trend) && (
-        <div className="mt-4 flex items-center gap-2">
+        <div className="mt-3 flex items-center gap-2">
           {trend && (
-            <span className={`text-xs font-medium ${trend.isUp ? 'text-emerald-600' : 'text-rose-600'}`}>
-              {trend.isUp ? '↑' : '↓'} {trend.value}%
+            <span
+              className={`inline-flex items-center gap-1 text-xs font-semibold ${
+                trend.isUp ? 'text-emerald-600' : 'text-rose-600'
+              }`}
+              aria-label={`${trend.isUp ? 'Up' : 'Down'} by ${trend.value} percent`}
+            >
+              <span aria-hidden="true">{trend.isUp ? '↑' : '↓'}</span>
+              {trend.value}%
             </span>
           )}
           {description && <p className="text-xs text-slate-400">{description}</p>}

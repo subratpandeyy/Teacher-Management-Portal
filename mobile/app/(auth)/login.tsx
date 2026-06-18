@@ -223,7 +223,7 @@ export default function LoginScreen() {
           <Pressable
             onPress={handleSubmit}
             disabled={loading}
-            className="mt-2 items-center rounded-xl bg-accent-green-500 py-3.5 active:bg-accent-green-600 disabled:opacity-60"
+            className="mt-2 items-center rounded-xl bg-accent-green-500 py-3.5 active:bg-accent-blue-600 disabled:opacity-60"
           >
             <Text className="text-base font-semibold text-white">
               {loading ? 'Please wait…' : isSignup ? 'Create account' : 'Sign in'}

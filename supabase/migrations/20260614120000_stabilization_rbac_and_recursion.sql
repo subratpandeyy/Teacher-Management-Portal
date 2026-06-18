@@ -39,6 +39,7 @@ CREATE POLICY "Users can view participants in their conversations"
 
 -- 4. Fix conversations SELECT policy
 DROP POLICY IF EXISTS conversations_select ON public.conversations;
+DROP POLICY IF EXISTS "Users can view conversations they participate in" ON public.conversations;
 CREATE POLICY "Users can view conversations they participate in"
   ON public.conversations
   FOR SELECT

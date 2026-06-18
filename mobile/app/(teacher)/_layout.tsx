@@ -129,7 +129,13 @@ export default function AppLayout() {
                         : (profile?.role === 'coordinator' 
                             ? '/(coordinator)/dashboard' 
                             : '/(teacher)/inbox'))
-                    : item.route;
+                    : item.label === 'Chat'
+                      ? (profile?.role === 'student'
+                          ? '/(student)/chat'
+                          : (profile?.role === 'coordinator'
+                              ? '/(coordinator)/chat'
+                              : '/(teacher)/chat'))
+                      : item.route;
                   router.push(targetRoute as any);
                   setSidebarOpen(false);
                 }}

@@ -302,10 +302,34 @@ function resolveDocumentRpcTarget(opts: {
   }
   if (opts.targetType === 'groups') {
     return {
-      targetType: 'group' as const,
+      targetType: 'groups' as const,
       targetId: null,
       teacherIds: null,
       groupIds: opts.groupIds?.length ? opts.groupIds : null,
+    };
+  }
+  if (opts.targetType === 'coordinator') {
+    return {
+      targetType: 'role_coordinator' as const,
+      targetId: null,
+      teacherIds: null,
+      groupIds: null,
+    };
+  }
+  if (opts.targetType === 'student') {
+    return {
+      targetType: 'role_student' as const,
+      targetId: null,
+      teacherIds: null,
+      groupIds: null,
+    };
+  }
+  if (opts.targetType === 'teacher_role') {
+    return {
+      targetType: 'role_teacher' as const,
+      targetId: null,
+      teacherIds: null,
+      groupIds: null,
     };
   }
   return { targetType: 'all' as const, targetId: null, teacherIds: null, groupIds: null };
@@ -427,6 +451,42 @@ export async function getSignedUrl(
 }
 
 // ─── Chat ─────────────────────────────────────────────────────────────────────
+export async function getDirectConversation(otherUserId: string) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { data: null, error: new Error('Not authenticated') };
+
+  const { data: convId, error: rpcErr } = await supabase.rpc('ensure_direct_conversation', {
+    p_user_a: user.id,
+    p_user_b: otherUserId,
+  });
+  if (rpcErr) return { data: null, error: rpcErr };
+
+  return supabase
+    .from('conversations')
+    .select('id, teacher_id, type, created_at')
+    .eq('id', convId as string)
+    .maybeSingle();
+}
+
+export async function sendDirectChatMessage(
+  conversationId: string,
+  body: string,
+  attachment?: { url: string; name: string; type?: string | null } | null
+) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated' };
+
+  const { error } = await supabase.from('chat_messages').insert({
+    conversation_id: conversationId,
+    sender_id: user.id,
+    body,
+    attachment_url: attachment?.url ?? null,
+    attachment_name: attachment?.name ?? null,
+    attachment_type: attachment?.type ?? null,
+  });
+  return { error: error?.message ?? null };
+}
+
 export async function getTeacherConversation(teacherId: string) {
   await assertAdmin();
   const { data: convId, error: rpcErr } = await supabase.rpc('ensure_teacher_conversation', {
@@ -441,15 +501,8 @@ export async function getTeacherConversation(teacherId: string) {
     .maybeSingle();
 }
 
-export async function fetchConversationMessages(conversationId: string, teacherId: string) {
+export async function fetchConversationMessages(conversationId: string, _teacherId: string) {
   await assertAdmin();
-  const conv = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('id', conversationId)
-    .eq('teacher_id', teacherId)
-    .single();
-  if (conv.error) return { data: null, error: conv.error };
   return supabase
     .from('chat_messages')
     .select(
@@ -482,13 +535,6 @@ export async function sendAdminChatMessage(
   attachment?: { url: string; name: string; type?: string | null } | null
 ) {
   await assertAdmin();
-  const conv = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('id', conversationId)
-    .eq('teacher_id', teacherId)
-    .single();
-  if (conv.error) return { error: conv.error.message };
   const { error } = await supabase.from('chat_messages').insert({
     conversation_id: conversationId,
     sender_id: adminId,
@@ -522,7 +568,7 @@ export async function updateChatMessage(messageId: string, body: string) {
   await assertAdmin();
   return supabase
     .from('chat_messages')
-    .update({ body })
+    .update({ body, edited_at: new Date().toISOString() })
     .eq('id', messageId);
 }
 
@@ -530,12 +576,13 @@ export async function softDeleteChatMessage(messageId: string) {
   await assertAdmin();
   return supabase
     .from('chat_messages')
-    .update({ deleted_at: new Date().toISOString(), body: 'Message deleted' })
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', messageId);
 }
 
 export async function uploadChatAttachment(conversationId: string, file: File) {
-  await assertAdmin();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { error: 'Not authenticated', path: null, name: null, mimeType: null, signedUrl: null };
   const safeName = sanitizeStorageFileName(file.name);
   const path = `${conversationId}/${generateUuid()}/${safeName}`;
   const uploaded = await uploadFile({

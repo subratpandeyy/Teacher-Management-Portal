@@ -303,18 +303,9 @@ export async function fetchChatMessages(conversationId: string, userId: string) 
 
 export async function uploadChatAttachment(
   conversationId: string,
-  teacherId: string,
+  _teacherId: string,
   picked: PickedFile
 ) {
-  const conv = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('id', conversationId)
-    .eq('teacher_id', teacherId)
-    .single();
-
-  if (conv.error) return { error: conv.error.message, path: null as string | null, name: null as string | null };
-
   const safeName = sanitizeStorageFileName(picked.name);
   const segment = `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const storagePath = `${conversationId}/${segment}/${safeName}`;
@@ -346,15 +337,6 @@ export async function sendChatMessage(
   teacherId: string,
   attachment?: { url: string; name: string; type?: string | null } | null
 ) {
-  const conv = await supabase
-    .from('conversations')
-    .select('id')
-    .eq('id', conversationId)
-    .eq('teacher_id', teacherId)
-    .single();
-
-  if (conv.error) return { error: conv.error.message };
-
   const { error } = await supabase.from('chat_messages').insert({
     conversation_id: conversationId,
     sender_id: senderId,
@@ -370,7 +352,7 @@ export async function sendChatMessage(
 export async function updateChatMessage(messageId: string, teacherId: string, body: string) {
   return supabase
     .from('chat_messages')
-    .update({ body })
+    .update({ body, edited_at: new Date().toISOString() })
     .eq('id', messageId)
     .eq('sender_id', teacherId)
     .is('deleted_at', null);
@@ -379,7 +361,7 @@ export async function updateChatMessage(messageId: string, teacherId: string, bo
 export async function softDeleteChatMessage(messageId: string, teacherId: string) {
   return supabase
     .from('chat_messages')
-    .update({ deleted_at: new Date().toISOString(), body: 'Message deleted' })
+    .update({ deleted_at: new Date().toISOString() })
     .eq('id', messageId)
     .eq('sender_id', teacherId);
 }

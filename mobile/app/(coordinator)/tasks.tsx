@@ -229,7 +229,7 @@ export default function CoordinatorTasks() {
 
   const getStatusColor = (s: string) => {
     switch (s) {
-      case 'completed': return { bg: 'bg-green-50 border border-green-200', text: 'text-green-600' };
+      case 'completed': return { bg: 'bg-green-50 border border-green-200', text: 'text-blue-600' };
       case 'in_progress': return { bg: 'bg-blue-50 border border-blue-200', text: 'text-blue-600' };
       case 'overdue': return { bg: 'bg-rose-100 border border-rose-300', text: 'text-rose-700' };
       default: return { bg: 'bg-amber-50 border border-amber-200', text: 'text-amber-600' };

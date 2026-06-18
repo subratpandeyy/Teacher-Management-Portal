@@ -16,7 +16,7 @@ import { supabase } from '../../lib/supabase';
 import { markConversationRead } from '../../lib/chatService';
 import { useUnreadMessagesContext } from '../../lib/UnreadMessagesContext';
 
-export default function TeacherChat() {
+export default function StudentChat() {
   const { profile } = useAuth();
   const { refresh: refreshUnread } = useUnreadMessagesContext();
   const [channels, setChannels] = useState<any[]>([]);
@@ -40,7 +40,7 @@ export default function TeacherChat() {
       const { data: assignments, error: assignErr } = await supabase
         .from('coordinator_assignments')
         .select('coordinator_id')
-        .eq('teacher_id', profile.id);
+        .eq('student_id', profile.id);
 
       if (assignErr) throw assignErr;
 
@@ -129,7 +129,7 @@ export default function TeacherChat() {
     if (!conversationId) return;
 
     const id = ++subId.current;
-    const channelName = `teacher-chat:${conversationId}:${id}`;
+    const channelName = `student-chat:${conversationId}:${id}`;
     const channel = supabase
       .channel(channelName, {
         config: {

@@ -1,5 +1,5 @@
 import { supabase } from '../../lib/supabase';
-import type { CoordinatorAssignment, Profile, DailyReport } from '../../../../shared/types';
+import type { CoordinatorAssignment, DailyReport, Profile } from '../../../../shared/types';
 
 class CoordinatorService {
   async getCoordinators() {
@@ -15,8 +15,8 @@ class CoordinatorService {
 
   async getCoordinatorStats(coordinatorId: string) {
     const assignments = await this.getAssignments(coordinatorId);
-    const teacherIds = assignments.map(a => a.teacher_id).filter(Boolean);
-    const studentIds = assignments.map(a => a.student_id).filter(Boolean);
+    const teacherIds = [...new Set(assignments.map(a => a.teacher_id).filter(Boolean))];
+    const studentIds = [...new Set(assignments.map(a => a.student_id).filter(Boolean))];
 
     return {
       teacherCount: teacherIds.length,
@@ -55,6 +55,27 @@ class CoordinatorService {
     teacher_id?: string;
     student_id?: string;
   }) {
+    const targetId = params.teacher_id ?? params.student_id;
+    const targetColumn = params.teacher_id ? 'teacher_id' : 'student_id';
+    if (!targetId) throw new Error('Must provide teacher_id or student_id');
+
+    const { data: existing } = await supabase
+      .from('coordinator_assignments')
+      .select('id, coordinator_id')
+      .eq(targetColumn, targetId);
+
+    if (existing && existing.length > 0) {
+      const first = existing[0];
+      if (first.coordinator_id === params.coordinator_id) {
+        throw new Error('Already assigned to this coordinator');
+      }
+      const { error: delErr } = await supabase
+        .from('coordinator_assignments')
+        .delete()
+        .eq(targetColumn, targetId);
+      if (delErr) throw delErr;
+    }
+
     const { data, error } = await supabase
       .from('coordinator_assignments')
       .insert(params)
@@ -65,36 +86,76 @@ class CoordinatorService {
     return data as CoordinatorAssignment;
   }
 
-  async getAssignments(coordinatorId: string) {
-    const { data: allAssignments, error } = await supabase
+  async removeAssignment(assignmentId: string) {
+    const { error } = await supabase
+      .from('coordinator_assignments')
+      .delete()
+      .eq('id', assignmentId);
+    if (error) throw error;
+  }
+
+  async getAssignments(coordinatorId?: string) {
+    let query = supabase
       .from('coordinator_assignments')
       .select(`
         *,
         teacher:profiles!coordinator_assignments_teacher_id_fkey(id, display_name, role),
         student:profiles!coordinator_assignments_student_id_fkey(id, display_name, role)
-      `)
-      .order('created_at', { ascending: true });
+      `);
 
-    if (error) throw error;
-
-    const activeTeacherAssign = new Map<string, any>();
-    const activeStudentAssign = new Map<string, any>();
-
-    for (const assign of allAssignments || []) {
-      if (assign.teacher_id) {
-        activeTeacherAssign.set(assign.teacher_id, assign);
-      }
-      if (assign.student_id) {
-        activeStudentAssign.set(assign.student_id, assign);
-      }
+    if (coordinatorId) {
+      query = query.eq('coordinator_id', coordinatorId);
     }
 
-    const activeAssignments = [
-      ...Array.from(activeTeacherAssign.values()),
-      ...Array.from(activeStudentAssign.values())
-    ].filter(assign => assign.coordinator_id === coordinatorId);
+    const { data, error } = await query;
+    if (error) throw error;
+    return data;
+  }
 
-    return activeAssignments;
+  async getUnassignedTeachers() {
+    const { data: assignedTeacherIds } = await supabase
+      .from('coordinator_assignments')
+      .select('teacher_id')
+      .not('teacher_id', 'is', null);
+
+    const excludedIds = assignedTeacherIds?.map(a => a.teacher_id).filter(Boolean) ?? [];
+
+    const query = supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'teacher')
+      .is('deleted_at', null);
+
+    if (excludedIds.length > 0) {
+      query.not('id', 'in', `(${excludedIds.join(',')})`);
+    }
+
+    const { data, error } = await query.order('display_name');
+    if (error) throw error;
+    return data as Profile[];
+  }
+
+  async getUnassignedStudents() {
+    const { data: assignedStudentIds } = await supabase
+      .from('coordinator_assignments')
+      .select('student_id')
+      .not('student_id', 'is', null);
+
+    const excludedIds = assignedStudentIds?.map(a => a.student_id).filter(Boolean) ?? [];
+
+    const query = supabase
+      .from('profiles')
+      .select('*')
+      .eq('role', 'student')
+      .is('deleted_at', null);
+
+    if (excludedIds.length > 0) {
+      query.not('id', 'in', `(${excludedIds.join(',')})`);
+    }
+
+    const { data, error } = await query.order('display_name');
+    if (error) throw error;
+    return data as Profile[];
   }
 }
 

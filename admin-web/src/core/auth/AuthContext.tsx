@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Session, User } from '@supabase/supabase-js';
 import { supabase } from '../../lib/supabase';
 import type { UserRole, Profile } from '../../../../shared/types';
@@ -20,6 +20,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const sessionRef = useRef<Session | null>(null);
+  const profileRef = useRef<Profile | null>(null);
+
+  useEffect(() => {
+    sessionRef.current = session;
+  }, [session]);
+
+  useEffect(() => {
+    profileRef.current = profile;
+  }, [profile]);
 
   useEffect(() => {
     let mounted = true;
@@ -40,12 +50,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, nextSession) => {
       if (!mounted) return;
 
+      const currentUserId = sessionRef.current?.user?.id;
+      const nextUserId = nextSession?.user?.id;
+
+      if (nextUserId === currentUserId && profileRef.current) {
+        setSession(nextSession);
+        sessionRef.current = nextSession;
+        return;
+      }
+
       if (event === 'TOKEN_REFRESHED' || event === 'INITIAL_SESSION') {
         setSession(nextSession);
+        sessionRef.current = nextSession;
         return;
       }
 
       setSession(nextSession);
+      sessionRef.current = nextSession;
       if (nextSession?.user) {
         const showLoader = event === 'SIGNED_IN';
         if (showLoader) setLoading(true);

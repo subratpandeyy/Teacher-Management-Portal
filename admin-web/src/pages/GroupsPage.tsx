@@ -8,13 +8,18 @@ import {
   fetchGroups,
   removeGroupMember,
   updateGroup,
+  updateChatMessage,
+  softDeleteChatMessage,
 } from '../lib/features';
 import type { Group } from '../lib/features';
 import { useAuth } from '../core/auth/AuthContext';
-import { MessageSquare, Users, Settings, Lock, Unlock, Send, Loader2 } from 'lucide-react';
+import { useUnreadMessagesContext } from '../core/hooks/UnreadMessagesContext';
+import { markConversationRead } from '../core/services/chatService';
+import { MessageSquare, Users, Settings, Lock, Unlock, Send, Loader2, Plus, X, Edit2, Trash2, Check } from 'lucide-react';
 
 export function GroupsPage() {
-  const { profile } = useAuth();
+  const { profile, can, user } = useAuth();
+  const { conversations, refresh: refreshUnread } = useUnreadMessagesContext();
   const [groups, setGroups] = useState<Group[]>([]);
   const [selectableUsers, setSelectableUsers] = useState<{ id: string; display_name: string; role: string }[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -34,10 +39,15 @@ export function GroupsPage() {
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [chatMessages, setChatMessages] = useState<any[]>([]);
   const [chatText, setChatText] = useState('');
+  const [chatEditingId, setChatEditingId] = useState<string | null>(null);
   const [sendingChat, setSendingChat] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const selected = groups.find((g) => g.id === selectedGroupId) ?? null;
+  const unreadByGroupId = conversations.reduce<Record<string, number>>((acc, conv) => {
+    if (conv.group_id) acc[conv.group_id] = Number(conv.unread_count ?? 0);
+    return acc;
+  }, {});
 
   async function loadGroups() {
     const { data } = await fetchGroups();
@@ -62,7 +72,6 @@ export function GroupsPage() {
     if (!profile) return;
     try {
       if (profile.role === 'teacher') {
-        // Teachers can only add assigned students
         const { data: assigns } = await supabase
           .from('teacher_student_assignments')
           .select('student_id, student:profiles!teacher_student_assignments_student_id_fkey(id, display_name, role)')
@@ -78,7 +87,6 @@ export function GroupsPage() {
           }));
         setSelectableUsers(list);
       } else {
-        // Admin & Coordinators (RLS automatically filters coordinators to their scope)
         const { data: users } = await supabase
           .from('profiles')
           .select('id, display_name, role')
@@ -104,7 +112,7 @@ export function GroupsPage() {
       setConversationId(conv.id);
       const { data: msgs } = await supabase
         .from('chat_messages')
-        .select('id, sender_id, body, created_at, sender:profiles!chat_messages_sender_id_fkey(display_name, role)')
+        .select('id, sender_id, body, created_at, edited_at, deleted_at, sender:profiles!chat_messages_sender_id_fkey(display_name, role)')
         .eq('conversation_id', conv.id)
         .order('created_at', { ascending: true });
       setChatMessages(msgs || []);
@@ -131,12 +139,22 @@ export function GroupsPage() {
     void loadGroupChat(selectedGroupId);
   }, [selectedGroupId]);
 
+  const chatSubId = useRef(0);
+
   // Realtime subscription for group chat
   useEffect(() => {
     if (!conversationId) return;
 
+    const id = ++chatSubId.current;
+    const channelName = `group_chat:${conversationId}:${id}`;
+    
     const channel = supabase
-      .channel(`group_chat:${conversationId}`)
+      .channel(channelName, {
+        config: {
+          broadcast: { self: false },
+          presence: { key: '' },
+        },
+      })
       .on(
         'postgres_changes',
         {
@@ -148,17 +166,22 @@ export function GroupsPage() {
         () => {
           supabase
             .from('chat_messages')
-            .select('id, sender_id, body, created_at, sender:profiles!chat_messages_sender_id_fkey(display_name, role)')
+            .select('id, sender_id, body, created_at, edited_at, deleted_at, sender:profiles!chat_messages_sender_id_fkey(display_name, role)')
             .eq('conversation_id', conversationId)
             .order('created_at', { ascending: true })
             .then(({ data }) => {
               setChatMessages(data || []);
             });
         }
-      )
-      .subscribe();
+      );
+
+    console.log('Subscribing channel:', channelName);
+    channel.subscribe((status) => {
+      console.log(`Channel ${channelName} status:`, status);
+    });
 
     return () => {
+      console.log('Removing channel:', channelName);
       void supabase.removeChannel(channel);
     };
   }, [conversationId]);
@@ -169,6 +192,11 @@ export function GroupsPage() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [chatMessages, activePanelTab]);
+
+  useEffect(() => {
+    if (activePanelTab !== 'chat' || !conversationId || !user?.id) return;
+    void markConversationRead(conversationId, user.id).then(() => refreshUnread());
+  }, [activePanelTab, conversationId, user?.id, refreshUnread]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -244,11 +272,28 @@ export function GroupsPage() {
 
   async function handleSendChat() {
     if (!conversationId || !chatText.trim() || !profile) return;
+    const body = chatText.trim();
     setSendingChat(true);
+
+    if (chatEditingId) {
+      const { error } = await supabase
+        .from('chat_messages')
+        .update({ body, edited_at: new Date().toISOString() })
+        .eq('id', chatEditingId);
+      setSendingChat(false);
+      if (error) {
+        alert(error.message);
+      } else {
+        setChatEditingId(null);
+        setChatText('');
+      }
+      return;
+    }
+
     const { error } = await supabase.from('chat_messages').insert({
       conversation_id: conversationId,
       sender_id: profile.id,
-      body: chatText.trim()
+      body
     });
     setSendingChat(false);
     if (error) {
@@ -259,52 +304,65 @@ export function GroupsPage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-bold text-slate-900">Group Channels & Chat</h2>
-        <p className="text-slate-500">Create, manage, and engage in duplex group chat channels.</p>
+    <div className="page-container space-y-6">
+      <div className="page-header">
+        <h1 className="page-title">Group Channels & Chat</h1>
+        <p className="page-subtitle">Create, manage, and engage in duplex group chat channels.</p>
       </div>
 
       {msg ? (
-        <p className="rounded-xl border border-blue-100 bg-blue-50/70 px-4 py-3 text-sm font-medium text-blue-800">
+        <div className={`rounded-lg border px-4 py-3 text-sm font-medium ${
+          msg.toLowerCase().includes('error') 
+            ? 'border-rose-100 bg-rose-50 text-rose-700' 
+            : 'border-green-100 bg-green-50 text-green-700'
+        }`} role="alert">
           {msg}
-        </p>
+        </div>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left column: List & Form */}
         <div className="lg:col-span-1 space-y-6">
           {/* Create group form */}
-          <form onSubmit={handleCreate} className="gc-card space-y-4 p-5 bg-white border border-slate-100 rounded-xl">
-            <h3 className="font-bold text-slate-900 text-lg">Create New Group</h3>
-            
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">Group Name</label>
-              <input
-                className="gc-input"
-                placeholder="Study Group A, Math Club, etc."
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                required
-              />
+          {can('manage_groups') ? (
+          <form onSubmit={handleCreate} className="card" aria-label="Create new group">
+            <div className="card-header">
+              <div className="flex items-center gap-2">
+                <Plus className="h-5 w-5 text-blue-600" />
+                <h2 className="text-lg font-bold text-slate-900">Create New Group</h2>
+              </div>
             </div>
+            <div className="card-body space-y-4">
+              <div>
+                <label className="label" htmlFor="group-name">Group Name</label>
+                <input
+                  id="group-name"
+                  className="input"
+                  placeholder="Study Group A, Math Club, etc."
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  required
+                  aria-required="true"
+                />
+              </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">Description</label>
-              <textarea
-                className="gc-input resize-none"
-                placeholder="Describe the purpose of this group..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={2}
-              />
-            </div>
+              <div>
+                <label className="label" htmlFor="group-desc">Description</label>
+                <textarea
+                  id="group-desc"
+                  className="textarea"
+                  placeholder="Describe the purpose of this group..."
+                  value={description}
+                  onChange={(e) => setDescription(e.target.value)}
+                  rows={2}
+                />
+              </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-xs font-semibold text-slate-500">Visibility Type</label>
+              <div>
+                <label className="label" htmlFor="group-type">Visibility Type</label>
                 <select
-                  className="gc-input"
+                  id="group-type"
+                  className="select"
                   value={type}
                   onChange={(e) => setType(e.target.value)}
                 >
@@ -312,105 +370,128 @@ export function GroupsPage() {
                   <option value="private">Private</option>
                 </select>
               </div>
-            </div>
 
-            <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-500">Membership Rules</label>
-              <input
-                className="gc-input"
-                placeholder="E.g., Open to coordinators only."
-                value={membershipRules}
-                onChange={(e) => setMembershipRules(e.target.value)}
-              />
-            </div>
+              <div>
+                <label className="label" htmlFor="group-rules">Membership Rules</label>
+                <input
+                  id="group-rules"
+                  className="input"
+                  placeholder="E.g., Open to coordinators only."
+                  value={membershipRules}
+                  onChange={(e) => setMembershipRules(e.target.value)}
+                />
+              </div>
 
-            <button type="submit" className="gc-btn-primary w-full">
-              Create Group
-            </button>
+              <button type="submit" className="btn-primary w-full">
+                <Plus className="h-4 w-4" />
+                Create Group
+              </button>
+            </div>
           </form>
-
-          {/* Group list */}
-          <div className="gc-card overflow-hidden bg-white border border-slate-100 rounded-xl">
-            <div className="bg-slate-50 border-b border-slate-100 px-4 py-3">
-              <h3 className="font-bold text-slate-800 text-sm">My Group Channels</h3>
+          ) : (
+            <div className="card">
+              <div className="card-body">
+                <p className="text-sm text-slate-500">
+                  Teachers can join public groups but cannot create or manage them.
+                </p>
+              </div>
             </div>
-            <ul className="divide-y divide-slate-100">
+          )}
+
+          {/* Group list sidebar */}
+          <div className="card" aria-label="Group list">
+            <div className="card-header">
+              <h2 className="text-sm font-bold text-slate-900">My Group Channels</h2>
+            </div>
+            <nav className="divide-y divide-slate-100" role="list">
               {groups.length === 0 ? (
-                <li className="px-4 py-6 text-center text-sm text-slate-400">No groups joined or created yet.</li>
+                <div className="empty-state py-8">
+                  <Users className="empty-state-icon" />
+                  <p className="empty-state-title">No groups yet</p>
+                  <p className="empty-state-desc">Create or join a group to get started.</p>
+                </div>
               ) : (
                 groups.map((g) => (
-                  <li key={g.id}>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedGroupId(g.id)}
-                      className={`w-full px-4 py-4 text-left transition hover:bg-slate-50/70 ${
-                        selectedGroupId === g.id
-                          ? 'border-l-4 border-l-green-500 bg-green-50/30'
-                          : ''
-                      }`}
-                    >
-                      <div className="flex justify-between items-start">
-                        <span className="font-semibold text-slate-900 text-sm flex items-center gap-1.5">
-                          {g.name}
-                          {g.type === 'private' ? (
-                            <Lock className="h-3.5 w-3.5 text-slate-400" />
-                          ) : (
-                            <Unlock className="h-3.5 w-3.5 text-slate-400" />
-                          )}
-                        </span>
-                        {g.creator_role && (
-                          <span className="text-[10px] uppercase font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded">
-                            {g.creator_role}
+                  <button
+                    key={g.id}
+                    type="button"
+                    onClick={() => setSelectedGroupId(g.id)}
+                    className={`w-full px-4 py-3.5 text-left transition-all ${
+                      selectedGroupId === g.id
+                        ? 'bg-green-50/50 border-l-4 border-l-blue-600'
+                        : 'border-l-4 border-l-transparent hover:bg-slate-50'
+                    }`}
+                    role="listitem"
+                    aria-current={selectedGroupId === g.id ? 'true' : undefined}
+                  >
+                    <div className="flex items-start justify-between gap-2">
+                      <span className="font-semibold text-slate-900 text-sm flex items-center gap-1.5 truncate">
+                        {g.name}
+                        {(unreadByGroupId[g.id] ?? 0) > 0 ? (
+                          <span className="badge-rose text-[10px] px-1.5 py-0.5" aria-label={`${unreadByGroupId[g.id]} unread messages`}>
+                            {unreadByGroupId[g.id] > 9 ? '9+' : unreadByGroupId[g.id]}
                           </span>
+                        ) : null}
+                      </span>
+                      <span className="shrink-0 mt-0.5" aria-label={g.type === 'private' ? 'Private group' : 'Public group'}>
+                        {g.type === 'private' ? (
+                          <Lock className="h-3.5 w-3.5 text-slate-400" />
+                        ) : (
+                          <Unlock className="h-3.5 w-3.5 text-slate-400" />
                         )}
-                      </div>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 mt-1">
                       {g.description ? (
-                        <div className="text-xs text-slate-500 mt-1 line-clamp-1">{g.description}</div>
+                        <span className="text-xs text-slate-500 line-clamp-1">{g.description}</span>
                       ) : null}
-                    </button>
-                  </li>
+                      {g.creator_role && (
+                        <span className="badge-slate text-[10px] shrink-0">{g.creator_role}</span>
+                      )}
+                    </div>
+                  </button>
                 ))
               )}
-            </ul>
+            </nav>
           </div>
         </div>
 
-        {/* Right columns: Group Panel (Members list / Group Chat) */}
+        {/* Right columns: Group Panel */}
         <div className="lg:col-span-2">
           {selected ? (
-            <div className="gc-card bg-white border border-slate-100 rounded-xl overflow-hidden flex flex-col h-[700px]">
+            <div className="card flex flex-col h-[500px] lg:h-[700px]" aria-label="Group details">
               {/* Selected Group Header */}
-              <div className="bg-slate-50 border-b border-slate-100 px-6 py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-bold text-slate-900 text-lg">{selected.name}</h3>
-                    <span className={`text-xs px-2 py-0.5 rounded-full font-medium capitalize ${
-                      selected.type === 'private' ? 'bg-amber-50 text-amber-700 border border-amber-100' : 'bg-green-50 text-green-700 border border-green-100'
+              <div className="card-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h2 className="text-lg font-bold text-slate-900 truncate">{selected.name}</h2>
+                    <span className={`badge capitalize ${
+                      selected.type === 'private' ? 'badge-amber' : 'badge-green'
                     }`}>
                       {selected.type}
                     </span>
                   </div>
-                  {selected.description && <p className="text-slate-500 text-xs mt-1">{selected.description}</p>}
+                  {selected.description && <p className="text-sm text-slate-500 mt-1">{selected.description}</p>}
                   {selected.membership_rules && (
-                    <p className="text-slate-400 text-[10px] mt-1 italic">Rules: {selected.membership_rules}</p>
+                    <p className="text-xs text-slate-400 mt-0.5">Rules: {selected.membership_rules}</p>
                   )}
                 </div>
 
-                <div className="flex gap-2 border-b sm:border-b-0 border-slate-100">
+                <div className="tabs" role="tablist" aria-label="Group panel tabs">
                   <button
+                    role="tab"
+                    aria-selected={activePanelTab === 'members'}
                     onClick={() => setActivePanelTab('members')}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-2 ${
-                      activePanelTab === 'members' ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
+                    className={`tab flex items-center gap-2 ${activePanelTab === 'members' ? 'tab-active' : ''}`}
                   >
                     <Users className="h-4 w-4" />
                     Members ({members.length})
                   </button>
                   <button
+                    role="tab"
+                    aria-selected={activePanelTab === 'chat'}
                     onClick={() => setActivePanelTab('chat')}
-                    className={`px-4 py-2 text-sm font-semibold rounded-lg flex items-center gap-2 ${
-                      activePanelTab === 'chat' ? 'bg-slate-800 text-white' : 'text-slate-600 hover:bg-slate-100'
-                    }`}
+                    className={`tab flex items-center gap-2 ${activePanelTab === 'chat' ? 'tab-active' : ''}`}
                   >
                     <MessageSquare className="h-4 w-4" />
                     Chat Room
@@ -419,166 +500,237 @@ export function GroupsPage() {
               </div>
 
               {/* Panel Content */}
-              <div className="flex-1 overflow-hidden flex flex-col">
+              <div className="flex-1 flex flex-col min-h-0">
                 {activePanelTab === 'members' ? (
-                  <div className="p-6 overflow-y-auto space-y-6 flex-1">
-                    {/* Settings / Edit (Only for creator or admin) */}
-                    {(profile?.role === 'admin' || profile?.id === selected.created_by) && (
-                      <div className="space-y-3 p-4 bg-slate-50/70 border border-slate-150 rounded-xl">
-                        <h4 className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                          <Settings className="h-4 w-4 text-slate-500" />
-                          Group Management
-                        </h4>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Rename</label>
-                            <input
-                              className="gc-input bg-white"
-                              value={selected.name}
-                              onChange={(e) =>
-                                setGroups((prev) =>
-                                  prev.map((g) => (g.id === selected.id ? { ...g, name: e.target.value } : g))
-                                )
-                              }
-                            />
+                  <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                    {/* Settings / Edit */}
+                    {(can('manage_groups') && (selected.created_by === profile?.id || profile?.role === 'admin')) && (
+                      <section className="card border-slate-100" aria-label="Group management">
+                        <div className="card-header">
+                          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
+                            <Settings className="h-4 w-4 text-slate-500" />
+                            Group Management
+                          </h3>
+                        </div>
+                        <div className="card-body space-y-4">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <div>
+                              <label className="label text-xs">Name</label>
+                              <input
+                                className="input"
+                                value={selected.name}
+                                onChange={(e) =>
+                                  setGroups((prev) =>
+                                    prev.map((g) => (g.id === selected.id ? { ...g, name: e.target.value } : g))
+                                  )
+                                }
+                              />
+                            </div>
+                            <div>
+                              <label className="label text-xs">Description</label>
+                              <input
+                                className="input"
+                                value={selected.description ?? ''}
+                                onChange={(e) =>
+                                  setGroups((prev) =>
+                                    prev.map((g) => (g.id === selected.id ? { ...g, description: e.target.value } : g))
+                                  )
+                                }
+                              />
+                            </div>
                           </div>
-                          <div className="space-y-1">
-                            <label className="text-[10px] font-bold text-slate-500 uppercase">Description</label>
-                            <input
-                              className="gc-input bg-white"
-                              value={selected.description ?? ''}
-                              onChange={(e) =>
-                                setGroups((prev) =>
-                                  prev.map((g) => (g.id === selected.id ? { ...g, description: e.target.value } : g))
-                                )
-                              }
-                            />
+                          <div className="flex justify-between items-center pt-2">
+                            <button
+                              type="button"
+                              onClick={handleUpdate}
+                              className="btn-primary btn-sm"
+                            >
+                              Save Settings
+                            </button>
+                            <button
+                              type="button"
+                              onClick={handleDelete}
+                              className="btn-danger btn-sm"
+                            >
+                              Delete Group
+                            </button>
                           </div>
                         </div>
-                        <div className="flex justify-between items-center pt-2">
-                          <button
-                            type="button"
-                            onClick={handleUpdate}
-                            className="gc-btn-primary text-xs py-1.5"
-                          >
-                            Save Settings
-                          </button>
-                          <button
-                            type="button"
-                            onClick={handleDelete}
-                            className="gc-btn-secondary border-red-200 text-xs py-1.5 text-red-600"
-                          >
-                            Delete Group
-                          </button>
-                        </div>
-                      </div>
+                      </section>
                     )}
 
-                    {/* Add Member section */}
-                    {(profile?.role === 'admin' || profile?.id === selected.created_by) && (
-                      <div className="space-y-2">
-                        <h4 className="font-semibold text-slate-900 text-sm">Add New Member</h4>
-                        <div className="flex gap-2">
-                          <select
-                            className="gc-input flex-1"
-                            value={addUserId}
-                            onChange={(e) => setAddUserId(e.target.value)}
-                          >
-                            <option value="">Choose user...</option>
-                            {selectableUsers
-                              .filter((user) => !members.some((m) => m.teacher_id === user.id))
-                              .map((u) => (
-                                <option key={u.id} value={u.id}>
-                                  {u.display_name} ({u.role.toUpperCase()})
-                                </option>
-                              ))}
-                          </select>
+                    {/* Add Member */}
+                    {can('manage_groups') && (selected.created_by === profile?.id || profile?.role === 'admin') && (
+                      <section aria-label="Add new member">
+                        <div className="flex items-center gap-4">
+                          <div className="flex-1">
+                            <label className="label" htmlFor="add-member-select">Add New Member</label>
+                            <select
+                              id="add-member-select"
+                              className="select"
+                              value={addUserId}
+                              onChange={(e) => setAddUserId(e.target.value)}
+                              aria-label="Select user to add"
+                            >
+                              <option value="">Choose user...</option>
+                              {selectableUsers
+                                .filter((user) => !members.some((m) => m.teacher_id === user.id))
+                                .map((u) => (
+                                  <option key={u.id} value={u.id}>
+                                    {u.display_name} ({u.role.toUpperCase()})
+                                  </option>
+                                ))}
+                            </select>
+                          </div>
                           <button
                             type="button"
                             onClick={handleAddMember}
-                            className="shrink-0 rounded-xl bg-blue-500 px-5 py-2 text-sm font-semibold text-white hover:bg-blue-650"
+                            className="btn-primary btn-sm mt-6"
+                            aria-label="Add selected member"
                           >
-                            Add Member
+                            + Add Member
                           </button>
                         </div>
-                      </div>
+                      </section>
                     )}
 
                     {/* Members List */}
-                    <div className="space-y-2">
-                      <h4 className="font-semibold text-slate-900 text-sm">Group Members</h4>
-                      <ul className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                        {members.length === 0 ? (
-                          <li className="text-slate-400 text-sm italic">No members in this group yet.</li>
-                        ) : (
-                          members.map((m) => (
-                            <li
-                              key={m.id}
-                              className="flex items-center justify-between rounded-xl border border-slate-100 bg-slate-50/50 px-4 py-3"
-                            >
-                              <div>
-                                <span className="font-semibold text-slate-900 text-sm">{m.display_name}</span>
-                                <span className="ml-2 text-[9px] uppercase font-bold text-slate-400 bg-white border border-slate-100 px-1 rounded">
-                                  {m.role}
-                                </span>
+                    <section aria-label="Group members">
+                      <h3 className="text-sm font-bold text-slate-800 mb-3">Group Members ({members.length})</h3>
+                      {members.length === 0 ? (
+                        <div className="empty-state py-8">
+                          <Users className="empty-state-icon" />
+                          <p className="empty-state-title">No members yet</p>
+                          <p className="empty-state-desc">Add members from the section above.</p>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3" role="list">
+                          {members.map((m) => {
+                            const roleClass = m.role === 'admin' ? 'role-admin' 
+                              : m.role === 'coordinator' ? 'role-coordinator'
+                              : m.role === 'teacher' ? 'role-teacher'
+                              : 'role-student';
+                            return (
+                              <div
+                                key={m.id}
+                                className="flex items-center justify-between rounded-lg border border-slate-100 bg-white px-4 py-3 hover:shadow-sm transition-shadow"
+                                role="listitem"
+                              >
+                                <div className="flex items-center gap-3 min-w-0">
+                                  <div className="avatar-sm" aria-hidden="true">
+                                    {m.display_name.charAt(0).toUpperCase()}
+                                  </div>
+                                  <div className="min-w-0">
+                                    <p className="font-semibold text-slate-900 text-sm truncate">{m.display_name}</p>
+                                    <span className={roleClass}>{m.role}</span>
+                                  </div>
+                                </div>
+                                {can('manage_groups') && (selected.created_by === profile?.id || profile?.role === 'admin') && m.teacher_id !== selected.created_by && (
+                                  <button
+                                    type="button"
+                                    className="btn-ghost btn-sm text-rose-600 hover:text-rose-700"
+                                    onClick={() => handleRemoveMember(m.teacher_id)}
+                                    aria-label={`Remove ${m.display_name}`}
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                  </button>
+                                )}
+                                {profile?.id === m.teacher_id && profile?.id !== selected.created_by && (
+                                  <button
+                                    type="button"
+                                    className="btn-ghost btn-sm text-rose-600 hover:text-rose-700"
+                                    onClick={() => handleRemoveMember(m.teacher_id)}
+                                    aria-label="Leave group"
+                                  >
+                                    <X className="h-3.5 w-3.5" />
+                                    Leave
+                                  </button>
+                                )}
                               </div>
-                              {/* Creator or admin can remove members, but cannot remove self unless leaving */}
-                              {(profile?.role === 'admin' || profile?.id === selected.created_by) && m.teacher_id !== selected.created_by && (
-                                <button
-                                  type="button"
-                                  className="text-xs font-semibold text-red-500 hover:text-red-700"
-                                  onClick={() => handleRemoveMember(m.teacher_id)}
-                                >
-                                  Remove
-                                </button>
-                              )}
-                              {/* Self leaving */}
-                              {profile?.id === m.teacher_id && profile?.id !== selected.created_by && (
-                                <button
-                                  type="button"
-                                  className="text-xs font-semibold text-red-500 hover:text-red-700"
-                                  onClick={() => handleRemoveMember(m.teacher_id)}
-                                >
-                                  Leave Group
-                                </button>
-                              )}
-                            </li>
-                          ))
-                        )}
-                      </ul>
-                    </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </section>
                   </div>
                 ) : (
-                  /* Chat Room panel */
-                  <div className="flex-1 flex flex-col bg-slate-50 overflow-hidden">
+                  /* Chat Room */
+                  <div className="flex-1 flex flex-col bg-slate-50 min-h-0">
                     {/* Message Area */}
-                    <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-4" role="log" aria-label="Chat messages" aria-live="polite">
                       {chatMessages.length === 0 ? (
-                        <div className="h-full flex flex-col justify-center items-center py-20 text-slate-400">
-                          <MessageSquare className="h-10 w-10 text-slate-300 mb-2" />
-                          <p className="text-sm">No messages in this group yet.</p>
-                          <p className="text-xs text-slate-400">Send a message to start the conversation.</p>
+                        <div className="empty-state h-full min-h-[300px]">
+                          <MessageSquare className="empty-state-icon" />
+                          <p className="empty-state-title">No messages yet</p>
+                          <p className="empty-state-desc">Send a message to start the conversation.</p>
                         </div>
                       ) : (
                         chatMessages.map((msg) => {
                           const isMe = msg.sender_id === profile?.id;
+                          const deleted = !!msg.deleted_at;
+                          const isEdited = msg.edited_at && msg.edited_at !== msg.created_at;
+                          const isAdmin = profile?.role === 'admin';
                           return (
-                            <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
-                              <div className="flex items-center gap-2 mb-1">
+                            <div key={msg.id} className={`group flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                              <div className="flex items-center gap-2 mb-1 px-1">
                                 {!isMe && (
-                                  <span className="text-xs font-bold text-slate-700">
-                                    {msg.sender?.role ? `[${msg.sender.role.toUpperCase()}] ` : ''}
+                                  <span className="text-xs font-medium text-slate-500">
                                     {msg.sender?.display_name ?? 'User'}
+                                    {msg.sender?.role ? ` · ${msg.sender.role}` : ''}
                                   </span>
                                 )}
-                                <span className="text-[9px] text-slate-450">
+                                <span className="text-[10px] text-slate-400">
                                   {new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                 </span>
                               </div>
-                              <div className={`max-w-[75%] rounded-2xl px-4 py-2.5 shadow-sm text-sm ${
-                                isMe ? 'bg-green-600 text-white rounded-tr-none' : 'bg-white text-slate-800 border border-slate-100 rounded-tl-none'
-                              }`}>
-                                <p className="whitespace-pre-wrap">{msg.body}</p>
+                              <div className={`max-w-[75%] ${
+                                isMe ? 'chat-message-me' : 'chat-message-other'
+                              } ${deleted ? 'opacity-60' : ''}`}>
+                                {deleted ? (
+                                  <p className="whitespace-pre-wrap break-words text-sm italic text-slate-500">Message deleted</p>
+                                ) : (
+                                  <>
+                                    <p className="whitespace-pre-wrap break-words text-sm">{msg.body}</p>
+                                    {isEdited && <p className="text-[10px] mt-0.5 opacity-70">· edited</p>}
+                                  </>
+                                )}
+                                {!deleted && (isMe || isAdmin) && (
+                                  <div className={`flex gap-1 mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity ${isMe ? 'justify-end' : 'justify-start'}`}>
+                                    {isMe && (
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setChatEditingId(msg.id);
+                                          setChatText(msg.body);
+                                        }}
+                                        className="text-[10px] p-0.5 rounded hover:bg-black/10"
+                                        aria-label="Edit message"
+                                      >
+                                        <Edit2 className="h-3 w-3" />
+                                      </button>
+                                    )}
+                                    <button
+                                      type="button"
+                                      onClick={async () => {
+                                        if (!confirm('Delete this message?')) return;
+                                        await supabase
+                                          .from('chat_messages')
+                                          .update({ deleted_at: new Date().toISOString(), body: 'Message deleted' })
+                                          .eq('id', msg.id);
+                                        const { data: msgs } = await supabase
+                                          .from('chat_messages')
+                                          .select('id, sender_id, body, created_at, edited_at, deleted_at, sender:profiles!chat_messages_sender_id_fkey(display_name, role)')
+                                          .eq('conversation_id', conversationId)
+                                          .order('created_at', { ascending: true });
+                                        setChatMessages(msgs || []);
+                                      }}
+                                      className="text-[10px] p-0.5 rounded hover:bg-black/10 text-rose-600"
+                                      aria-label="Delete message"
+                                    >
+                                      <Trash2 className="h-3 w-3" />
+                                    </button>
+                                  </div>
+                                )}
                               </div>
                             </div>
                           );
@@ -587,11 +739,25 @@ export function GroupsPage() {
                     </div>
 
                     {/* Chat Input */}
-                    <div className="bg-white border-t border-slate-100 p-4">
+                    <div className="card-footer bg-white">
+                      {chatEditingId && (
+                        <div className="mb-2 flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600">
+                          <Edit2 className="h-3.5 w-3.5" />
+                          <span className="flex-1">Editing message</span>
+                          <button
+                            type="button"
+                            onClick={() => { setChatEditingId(null); setChatText(''); }}
+                            className="shrink-0 rounded p-0.5 hover:bg-blue-100"
+                            aria-label="Cancel editing"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      )}
                       <div className="flex gap-2">
                         <input
-                          className="gc-input flex-1"
-                          placeholder="Type your message here..."
+                          className="input"
+                          placeholder={chatEditingId ? 'Edit message…' : 'Type your message here...'}
                           value={chatText}
                           onChange={(e) => setChatText(e.target.value)}
                           onKeyDown={(e) => {
@@ -600,19 +766,23 @@ export function GroupsPage() {
                               void handleSendChat();
                             }
                           }}
+                          aria-label="Chat message input"
                         />
                         <button
                           type="button"
                           disabled={sendingChat || !chatText.trim()}
                           onClick={handleSendChat}
-                          className="shrink-0 rounded-xl bg-green-600 px-4 py-2 font-bold text-white hover:bg-green-700 disabled:opacity-50 flex items-center gap-1.5"
+                          className="btn-primary shrink-0"
+                          aria-label={chatEditingId ? 'Save edit' : 'Send message'}
                         >
                           {sendingChat ? (
                             <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : chatEditingId ? (
+                            <Check className="h-4 w-4" />
                           ) : (
                             <Send className="h-4 w-4" />
                           )}
-                          Send
+                          {chatEditingId ? 'Save' : 'Send'}
                         </button>
                       </div>
                     </div>
@@ -621,10 +791,12 @@ export function GroupsPage() {
               </div>
             </div>
           ) : (
-            <div className="h-full min-h-[400px] flex flex-col justify-center items-center bg-white border border-slate-100 rounded-xl text-slate-400">
-              <Users className="h-12 w-12 text-slate-200 mb-2" />
-              <p className="font-semibold">No Group Selected</p>
-              <p className="text-xs">Choose or create a group from the list to view chat and members.</p>
+            <div className="card min-h-[400px]">
+              <div className="empty-state h-full min-h-[400px]">
+                <Users className="empty-state-icon h-16 w-16 text-slate-200" />
+                <p className="empty-state-title text-lg">No Group Selected</p>
+                <p className="empty-state-desc">Choose a group from the list to view members and chat.</p>
+              </div>
             </div>
           )}
         </div>

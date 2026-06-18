@@ -202,7 +202,7 @@ export default function DocumentsScreen() {
           </Text>
         </Pressable>
         {status ? (
-          <Text className="mt-2 text-center text-xs font-medium text-accent-green-600">{status}</Text>
+          <Text className="mt-2 text-center text-xs font-medium text-accent-blue-600">{status}</Text>
         ) : null}
       </View>
       <ErrorBanner message={error} onDismiss={() => setError('')} />

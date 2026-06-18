@@ -17,6 +17,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_attendance_student_date
   ON public.attendance (student_id, date);
 
 -- ─── 3. Daily reports RLS ─────────────────────────────────────────────────────
+DROP POLICY IF EXISTS "Coordinators can manage their daily reports" ON public.daily_reports;
 CREATE POLICY "Coordinators can manage their daily reports"
   ON public.daily_reports
   FOR ALL
@@ -24,6 +25,7 @@ CREATE POLICY "Coordinators can manage their daily reports"
   USING (coordinator_id = auth.uid() OR public.is_admin())
   WITH CHECK (coordinator_id = auth.uid() OR public.is_admin());
 
+DROP POLICY IF EXISTS "Admins can view all daily reports" ON public.daily_reports;
 CREATE POLICY "Admins can view all daily reports"
   ON public.daily_reports
   FOR SELECT
@@ -31,6 +33,7 @@ CREATE POLICY "Admins can view all daily reports"
   USING (public.is_admin());
 
 -- ─── 4. Conversation participants RLS ───────────────────────────────────────
+DROP POLICY IF EXISTS "Users can view participants in their conversations" ON public.conversation_participants;
 CREATE POLICY "Users can view participants in their conversations"
   ON public.conversation_participants
   FOR SELECT
@@ -45,6 +48,7 @@ CREATE POLICY "Users can view participants in their conversations"
     OR public.is_admin()
   );
 
+DROP POLICY IF EXISTS "Admins can manage conversation participants" ON public.conversation_participants;
 CREATE POLICY "Admins can manage conversation participants"
   ON public.conversation_participants
   FOR ALL
@@ -52,6 +56,7 @@ CREATE POLICY "Admins can manage conversation participants"
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
+DROP POLICY IF EXISTS "Users can join conversations they own" ON public.conversation_participants;
 CREATE POLICY "Users can join conversations they own"
   ON public.conversation_participants
   FOR INSERT

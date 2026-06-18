@@ -24,7 +24,7 @@ function PortalRoleGate() {
       <p className="mt-2 max-w-md text-center text-sm text-slate-500">
         Student accounts must use the mobile app. You have been signed out.
       </p>
-      <Link to="/login" className="mt-6 text-sm font-medium text-green-600 hover:text-green-700">
+      <Link to="/login" className="mt-6 text-sm font-medium text-blue-600 hover:text-green-700">
         Back to Login
       </Link>
     </div>
@@ -84,7 +84,7 @@ export function RoleGuard({ children, allowedRoles, fallback }: RoleGuardProps) 
         <p className="mt-2 text-sm text-slate-500">
           Your role ({profile?.role ?? 'unknown'}) does not have permission to view this page.
         </p>
-        <Link to="/" className="mt-6 text-sm font-medium text-green-600 hover:text-green-700">
+        <Link to="/" className="mt-6 text-sm font-medium text-blue-600 hover:text-green-700">
           Return to Dashboard
         </Link>
       </div>

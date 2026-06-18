@@ -118,7 +118,7 @@ export default function CoordinatorWork() {
             <Text className="text-slate-400 text-xs mt-0.5">{todayStr}</Text>
           </View>
           <View className={`px-2.5 py-1 rounded-full ${todayReportId ? 'bg-green-50' : 'bg-amber-50'}`}>
-            <Text className={`text-xs font-semibold uppercase ${todayReportId ? 'text-green-600' : 'text-amber-600'}`}>
+            <Text className={`text-xs font-semibold uppercase ${todayReportId ? 'text-blue-600' : 'text-amber-600'}`}>
               {todayReportId ? 'Submitted' : 'Pending'}
             </Text>
           </View>

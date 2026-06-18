@@ -3,11 +3,11 @@ import { userService } from '../core/services/userService';
 import { coordinatorService } from '../core/services/coordinatorService';
 import { useAuth } from '../core/auth/AuthContext';
 import type { Profile } from '../../../shared/types';
-import { 
-  Plus, 
-  Search, 
-  Loader2, 
-  UserCheck, 
+import {
+  Plus,
+  Search,
+  Loader2,
+  UserCheck,
   MessageSquare,
   Edit2,
   Trash2,
@@ -23,14 +23,16 @@ export function TeachersPage() {
   const [tsAssignments, setTsAssignments] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  
   const [selectedTeacherId, setSelectedTeacherId] = useState<string | null>(null);
 
-  // Modals state
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [teacherToEdit, setTeacherToEdit] = useState<Profile | null>(null);
+  const [showUnassignModal, setShowUnassignModal] = useState(false);
+  const [unassignTeacherId, setUnassignTeacherId] = useState<string | null>(null);
+  const [unassignTeacherName, setUnassignTeacherName] = useState('');
 
-  // Form state
   const [formName, setFormName] = useState('');
   const [formEmail, setFormEmail] = useState('');
   const [formPhone, setFormPhone] = useState('');
@@ -49,10 +51,9 @@ export function TeachersPage() {
       setCoordinators(coordData || []);
       setTsAssignments(assignmentData || []);
 
-      // Filter if coordinator
       let filteredData = teacherData;
       if (authProfile?.role === 'coordinator') {
-        filteredData = teacherData.filter((t: any) => 
+        filteredData = teacherData.filter((t: any) =>
           t.assignments?.some((a: any) => a.coordinator?.id === authProfile.id)
         );
       }
@@ -123,16 +124,37 @@ export function TeachersPage() {
     }
   };
 
-  const handleAssignCoordinator = async (teacherId: string, coordId: string) => {
-    if (!coordId) return;
+  const handleAssignCoordinator = async (teacherId: string, coordId: string, teacherName?: string) => {
+    if (!coordId) {
+      const activeAssign = teachers.find(t => t.id === teacherId)?.assignments?.[0];
+      if (activeAssign) {
+        setUnassignTeacherId(activeAssign.id);
+        setUnassignTeacherName(teacherName ?? '');
+        setShowUnassignModal(true);
+      }
+      return;
+    }
     try {
       await coordinatorService.assignToCoordinator({
         coordinator_id: coordId,
         teacher_id: teacherId
       });
       fetchTeachersAndRelations();
+    } catch (err: any) {
+      alert(err?.message || 'Error assigning coordinator');
+    }
+  };
+
+  const handleUnassignCoordinator = async () => {
+    if (!unassignTeacherId) return;
+    try {
+      await coordinatorService.removeAssignment(unassignTeacherId);
+      setShowUnassignModal(false);
+      setUnassignTeacherId(null);
+      setUnassignTeacherName('');
+      fetchTeachersAndRelations();
     } catch (err) {
-      console.error('Error assigning coordinator:', err);
+      console.error('Error unassigning coordinator:', err);
     }
   };
 
@@ -158,233 +180,344 @@ export function TeachersPage() {
     return tsAssignments.filter(a => a.teacher_id === teacherId);
   };
 
-  const filtered = teachers.filter(t => 
+  const filtered = teachers.filter(t =>
     t.display_name?.toLowerCase().includes(search.toLowerCase())
   );
 
   const selectedTeacher = teachers.find(t => t.id === selectedTeacherId);
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="page-container space-y-6">
+      <div className="page-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">Teacher Management</h2>
-          <p className="text-slate-500">Manage faculty, assignments, and class materials.</p>
+          <h1 className="page-title">Teacher Management</h1>
+          <p className="page-subtitle">Manage faculty, assignments, and class materials.</p>
         </div>
-        <button 
+        <button
           onClick={() => { resetForm(); setShowAddModal(true); }}
-          className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 font-semibold text-white transition-colors hover:bg-green-700"
+          className="btn-primary"
+          aria-label="Add new teacher"
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="h-4 w-4" />
           Add Teacher
         </button>
       </div>
 
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
+      <div className="flex flex-col gap-4 sm:flex-row">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" aria-hidden="true" />
           <input
             type="text"
             placeholder="Search teachers by name..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-slate-200 pl-10 pr-4 py-2 text-sm focus:border-green-500 focus:outline-none"
+            className="input pl-10"
+            aria-label="Search teachers by name"
           />
         </div>
       </div>
 
-      <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-6 py-4">Teacher</th>
-                <th className="px-6 py-4">Coordinator</th>
-                <th className="px-6 py-4">Assigned Students</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4 text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-green-600" />
-                  </td>
-                </tr>
-              ) : filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                    No teachers found.
-                  </td>
-                </tr>
-              ) : (
-                filtered.map((teacher) => {
-                  const activeCoord = getActiveCoordinator(teacher);
-                  const assignedStudents = getTeacherStudents(teacher.id);
-                  return (
-                    <tr key={teacher.id} className="hover:bg-slate-50 transition-colors">
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-full bg-emerald-50 flex items-center justify-center text-emerald-600 font-bold">
-                            {teacher.display_name?.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-bold text-slate-900">{teacher.display_name}</p>
-                            <p className="text-xs text-slate-400">ID: {teacher.id.slice(0, 8)}</p>
-                            {teacher.phone && <p className="text-xs text-slate-400">{teacher.phone}</p>}
-                          </div>
+      <div className="card">
+        {loading ? (
+          <div className="card-body">
+            <div className="loading-page" role="status" aria-label="Loading teachers">
+              <div className="spinner" />
+            </div>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="card-body">
+            <div className="empty-state">
+              <Search className="empty-state-icon" />
+              <p className="empty-state-title">No teachers found</p>
+              <p className="empty-state-desc">Try adjusting your search or add a new teacher.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Mobile cards */}
+            <div className="divide-y divide-slate-100 sm:hidden">
+              {filtered.map((teacher) => {
+                const activeCoord = getActiveCoordinator(teacher);
+                const assignedStudents = getTeacherStudents(teacher.id);
+                return (
+                  <div key={teacher.id} className="px-4 py-3 space-y-2">
+                    <div className="flex items-start gap-3">
+                      <div className="flex items-center gap-2 min-w-0 flex-1">
+                        <div className="avatar-md bg-emerald-50 text-emerald-600 shrink-0 h-8 w-8 text-xs">
+                          {teacher.display_name?.charAt(0).toUpperCase()}
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <UserCheck className="h-4 w-4 text-slate-400" />
-                          {authProfile?.role === 'admin' ? (
-                            <select
-                              value={activeCoord?.id || ''}
-                              onChange={(e) => handleAssignCoordinator(teacher.id, e.target.value)}
-                              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-xs focus:border-green-500 focus:outline-none"
-                            >
-                              <option value="">Not Assigned</option>
-                              {coordinators.map(c => (
-                                <option key={c.id} value={c.id}>{c.display_name}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <span className="font-semibold text-slate-800">{activeCoord?.display_name || 'Not Assigned'}</span>
-                          )}
+                        <div className="min-w-0">
+                          <p className="font-medium text-slate-900 text-sm truncate">{teacher.display_name}</p>
+                          <p className="text-xs text-slate-400">ID: {teacher.id.slice(0, 8)}</p>
                         </div>
-                      </td>
-                      <td className="px-6 py-4">
-                        <div className="flex flex-wrap gap-1 max-w-[200px]">
-                          {assignedStudents.length === 0 ? (
-                            <span className="text-xs text-slate-400">No students</span>
-                          ) : (
-                            assignedStudents.map((assign: any) => (
-                              <span key={assign.id} className="inline-flex bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[11px] font-medium truncate max-w-[150px]">
-                                {assign.student?.display_name}
-                              </span>
-                            ))
-                          )}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-slate-500 capitalize text-xs">
+                      </div>
+                      <span className={teacher.status === 'inactive' ? 'badge-rose shrink-0' : 'badge-green shrink-0'}>
                         {teacher.status || 'active'}
-                      </td>
-                      <td className="px-6 py-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          <button 
-                            onClick={() => setSelectedTeacherId(teacher.id)}
-                            className="flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-bold text-slate-700 hover:bg-slate-200 transition-colors"
-                          >
-                            <MessageSquare className="h-3.5 w-3.5" />
-                            DETAILS
-                          </button>
-                          <button 
-                            onClick={() => {
-                              resetForm();
-                              setTeacherToEdit(teacher);
-                              setFormName(teacher.display_name || '');
-                              setFormPhone(teacher.phone || '');
-                              setFormStatus(teacher.status || 'active');
-                              setShowEditModal(true);
-                            }}
-                            className="p-1.5 text-slate-400 hover:text-blue-600 transition-colors"
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </button>
-                          {authProfile?.role === 'admin' && (
-                            <button 
-                              onClick={() => handleDeleteTeacher(teacher.id)}
-                              className="p-1.5 text-slate-400 hover:text-rose-600 transition-colors"
+                      </span>
+                    </div>
+
+                    <div className="flex items-center gap-2 text-xs">
+                      <UserCheck className="h-3.5 w-3.5 text-slate-400 shrink-0" aria-hidden="true" />
+                      {authProfile?.role === 'admin' ? (
+                        <select
+                          value={activeCoord?.id || ''}
+                          onChange={(e) => handleAssignCoordinator(teacher.id, e.target.value)}
+                          className="select text-xs py-1 flex-1 min-w-0"
+                          aria-label={`Assign coordinator for ${teacher.display_name}`}
+                        >
+                          <option value="">Not Assigned</option>
+                          {coordinators.map(c => (
+                            <option key={c.id} value={c.id}>{c.display_name}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="font-medium text-slate-800 truncate">{activeCoord?.display_name || 'Not Assigned'}</span>
+                      )}
+                    </div>
+
+                    <div className="flex flex-wrap gap-1">
+                      {assignedStudents.length === 0 ? (
+                        <span className="text-xs text-slate-400">No students</span>
+                      ) : (
+                        assignedStudents.map((assign: any) => (
+                          <span key={assign.id} className="badge-blue truncate max-w-[120px] text-[10px]">
+                            {assign.student?.display_name}
+                          </span>
+                        ))
+                      )}
+                    </div>
+
+                    {teacher.phone && <p className="text-xs text-slate-400">{teacher.phone}</p>}
+
+                    <div className="flex gap-1.5 pt-1">
+                      <button
+                        onClick={() => setSelectedTeacherId(teacher.id)}
+                        className="btn-secondary btn-sm flex-1 text-xs"
+                        aria-label={`View details for ${teacher.display_name}`}
+                      >
+                        <MessageSquare className="h-3 w-3" />
+                        Details
+                      </button>
+                      <button
+                        onClick={() => {
+                          resetForm();
+                          setTeacherToEdit(teacher);
+                          setFormName(teacher.display_name || '');
+                          setFormPhone(teacher.phone || '');
+                          setFormStatus(teacher.status || 'active');
+                          setShowEditModal(true);
+                        }}
+                        className="btn-ghost btn-sm"
+                        aria-label={`Edit ${teacher.display_name}`}
+                      >
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </button>
+                      {authProfile?.role === 'admin' && (
+                        <button
+                          onClick={() => handleDeleteTeacher(teacher.id)}
+                          className="btn-ghost btn-sm text-slate-400 hover:text-rose-600"
+                          aria-label={`Delete ${teacher.display_name}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Desktop table */}
+            <div className="table-responsive hidden sm:block">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Teacher</th>
+                    <th>Coordinator</th>
+                    <th>Assigned Students</th>
+                    <th>Status</th>
+                    <th className="text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {filtered.map((teacher) => {
+                    const activeCoord = getActiveCoordinator(teacher);
+                    const assignedStudents = getTeacherStudents(teacher.id);
+                    return (
+                      <tr key={teacher.id}>
+                        <td>
+                          <div className="flex items-center gap-3">
+                            <div className="avatar-md bg-emerald-50 text-emerald-600 shrink-0">
+                              {teacher.display_name?.charAt(0).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="font-medium text-slate-900 truncate">{teacher.display_name}</p>
+                              <p className="text-xs text-slate-400">ID: {teacher.id.slice(0, 8)}</p>
+                              {teacher.phone && <p className="text-xs text-slate-400 truncate">{teacher.phone}</p>}
+                            </div>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <UserCheck className="h-4 w-4 text-slate-400 shrink-0" aria-hidden="true" />
+                            {authProfile?.role === 'admin' ? (
+                              <select
+                                value={activeCoord?.id || ''}
+                          onChange={(e) => handleAssignCoordinator(teacher.id, e.target.value, teacher.display_name ?? undefined)}
+                                className="select text-xs py-1 sm:min-w-[140px]"
+                                aria-label={`Assign coordinator for ${teacher.display_name}`}
+                              >
+                                <option value="">Not Assigned</option>
+                                {coordinators.map(c => (
+                                  <option key={c.id} value={c.id}>{c.display_name}</option>
+                                ))}
+                              </select>
+                            ) : (
+                              <span className="font-medium text-slate-800 text-sm">{activeCoord?.display_name || 'Not Assigned'}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <div className="flex flex-wrap gap-1 max-w-[220px]">
+                            {assignedStudents.length === 0 ? (
+                              <span className="text-xs text-slate-400">No students</span>
+                            ) : (
+                              assignedStudents.map((assign: any) => (
+                                <span key={assign.id} className="badge-blue truncate max-w-[140px]">
+                                  {assign.student?.display_name}
+                                </span>
+                              ))
+                            )}
+                          </div>
+                        </td>
+                        <td>
+                          <span className={teacher.status === 'inactive' ? 'badge-rose' : 'badge-green'}>
+                            {teacher.status || 'active'}
+                          </span>
+                        </td>
+                        <td className="text-right">
+                          <div className="flex justify-end gap-1">
+                            <button
+                              onClick={() => setSelectedTeacherId(teacher.id)}
+                              className="btn-secondary btn-sm"
+                              aria-label={`View details for ${teacher.display_name}`}
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <MessageSquare className="h-3.5 w-3.5" />
+                              Details
                             </button>
-                          )}
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })
-              )}
-            </tbody>
-          </table>
-        </div>
+                            <button
+                              onClick={() => {
+                                resetForm();
+                                setTeacherToEdit(teacher);
+                                setFormName(teacher.display_name || '');
+                                setFormPhone(teacher.phone || '');
+                                setFormStatus(teacher.status || 'active');
+                                setShowEditModal(true);
+                              }}
+                              className="btn-ghost btn-sm"
+                              aria-label={`Edit ${teacher.display_name}`}
+                            >
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </button>
+                            {authProfile?.role === 'admin' && (
+                              <button
+                                onClick={() => handleDeleteTeacher(teacher.id)}
+                                className="btn-ghost btn-sm text-slate-400 hover:text-rose-600"
+                                aria-label={`Delete ${teacher.display_name}`}
+                              >
+                                <Trash2 className="h-3.5 w-3.5" />
+                              </button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
 
-      {/* Add Modal */}
       {showAddModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900">Add Teacher</h3>
-              <button onClick={() => setShowAddModal(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="add-teacher-modal-title">
+          <div className="modal">
+            <div className="modal-header">
+              <h2 id="add-teacher-modal-title" className="modal-title">Add Teacher</h2>
+              <button onClick={() => setShowAddModal(false)} className="btn-ghost rounded-lg p-1.5" aria-label="Close modal">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
-            <form onSubmit={handleAddTeacher} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Full Name *</label>
-                <input
-                  required
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-                />
+            {error && (
+              <div className="px-6 pt-4">
+                <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">{error}</p>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Email Address *</label>
-                <input
-                  required
-                  type="email"
-                  value={formEmail}
-                  onChange={(e) => setFormEmail(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-                />
+            )}
+            <form onSubmit={handleAddTeacher}>
+              <div className="modal-body space-y-4">
+                <div>
+                  <label className="label" htmlFor="add-teacher-name">Full Name *</label>
+                  <input
+                    id="add-teacher-name"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    className="input"
+                    placeholder="Sarah Wilson"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="add-teacher-email">Email Address *</label>
+                  <input
+                    id="add-teacher-email"
+                    required
+                    type="email"
+                    value={formEmail}
+                    onChange={(e) => setFormEmail(e.target.value)}
+                    className="input"
+                    placeholder="sarah@example.com"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="add-teacher-phone">Phone Number</label>
+                  <input
+                    id="add-teacher-phone"
+                    value={formPhone}
+                    onChange={(e) => setFormPhone(e.target.value)}
+                    className="input"
+                    placeholder="+1 (555) 000-0000"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="add-teacher-password">Temporary Password</label>
+                  <input
+                    id="add-teacher-password"
+                    type="password"
+                    placeholder="Leave blank for random auto-generated"
+                    value={formPassword}
+                    onChange={(e) => setFormPassword(e.target.value)}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="add-teacher-status">Status</label>
+                  <select
+                    id="add-teacher-status"
+                    value={formStatus}
+                    onChange={(e) => setFormStatus(e.target.value)}
+                    className="select"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Phone Number</label>
-                <input
-                  value={formPhone}
-                  onChange={(e) => setFormPhone(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Temporary Password</label>
-                <input
-                  type="password"
-                  placeholder="Leave blank for random auto-generated"
-                  value={formPassword}
-                  onChange={(e) => setFormPassword(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-                />
-              </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
-                <select
-                  value={formStatus}
-                  onChange={(e) => setFormStatus(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddModal(false)}
-                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                >
+              <div className="modal-footer">
+                <button type="button" onClick={() => setShowAddModal(false)} className="btn-secondary">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
-                >
+                <button type="submit" disabled={submitting} className="btn-primary">
                   {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   Create Teacher
                 </button>
@@ -394,59 +527,59 @@ export function TeachersPage() {
         </div>
       )}
 
-      {/* Edit Modal */}
       {showEditModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-xl">
-            <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-bold text-slate-900">Edit Teacher</h3>
-              <button onClick={() => setShowEditModal(false)} className="rounded-lg p-1 text-slate-400 hover:bg-slate-100">
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="edit-teacher-modal-title">
+          <div className="modal">
+            <div className="modal-header">
+              <h2 id="edit-teacher-modal-title" className="modal-title">Edit Teacher</h2>
+              <button onClick={() => setShowEditModal(false)} className="btn-ghost rounded-lg p-1.5" aria-label="Close modal">
                 <X className="h-5 w-5" />
               </button>
             </div>
-            {error && <p className="mb-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p>}
-            <form onSubmit={handleEditTeacher} className="space-y-4">
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Full Name *</label>
-                <input
-                  required
-                  value={formName}
-                  onChange={(e) => setFormName(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-                />
+            {error && (
+              <div className="px-6 pt-4">
+                <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700" role="alert">{error}</p>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Phone Number</label>
-                <input
-                  value={formPhone}
-                  onChange={(e) => setFormPhone(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-                />
+            )}
+            <form onSubmit={handleEditTeacher}>
+              <div className="modal-body space-y-4">
+                <div>
+                  <label className="label" htmlFor="edit-teacher-name">Full Name *</label>
+                  <input
+                    id="edit-teacher-name"
+                    required
+                    value={formName}
+                    onChange={(e) => setFormName(e.target.value)}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="edit-teacher-phone">Phone Number</label>
+                  <input
+                    id="edit-teacher-phone"
+                    value={formPhone}
+                    onChange={(e) => setFormPhone(e.target.value)}
+                    className="input"
+                  />
+                </div>
+                <div>
+                  <label className="label" htmlFor="edit-teacher-status">Status</label>
+                  <select
+                    id="edit-teacher-status"
+                    value={formStatus}
+                    onChange={(e) => setFormStatus(e.target.value)}
+                    className="select"
+                  >
+                    <option value="active">Active</option>
+                    <option value="inactive">Inactive</option>
+                  </select>
+                </div>
               </div>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Status</label>
-                <select
-                  value={formStatus}
-                  onChange={(e) => setFormStatus(e.target.value)}
-                  className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm focus:border-green-500 focus:outline-none"
-                >
-                  <option value="active">Active</option>
-                  <option value="inactive">Inactive</option>
-                </select>
-              </div>
-              <div className="flex justify-end gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={() => setShowEditModal(false)}
-                  className="rounded-lg border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:bg-slate-50"
-                >
+              <div className="modal-footer">
+                <button type="button" onClick={() => setShowEditModal(false)} className="btn-secondary">
                   Cancel
                 </button>
-                <button
-                  type="submit"
-                  disabled={submitting}
-                  className="flex items-center gap-2 rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
-                >
+                <button type="submit" disabled={submitting} className="btn-primary">
                   {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
                   Save Changes
                 </button>
@@ -456,10 +589,40 @@ export function TeachersPage() {
         </div>
       )}
 
+      {showUnassignModal && (
+        <div className="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="unassign-teacher-modal-title">
+          <div className="modal max-w-md">
+            <div className="modal-header">
+              <h2 id="unassign-teacher-modal-title" className="modal-title">Confirm Unassignment</h2>
+              <button onClick={() => { setShowUnassignModal(false); setUnassignTeacherId(null); setUnassignTeacherName(''); }} className="btn-ghost rounded-lg p-1.5" aria-label="Close modal">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+            <div className="modal-body">
+              <p className="text-sm text-slate-600">
+                Are you sure you want to remove <strong>{unassignTeacherName}</strong> from their assigned coordinator?
+              </p>
+              <p className="text-xs text-slate-400 mt-2">
+                The teacher will become available for reassignment.
+              </p>
+            </div>
+            <div className="modal-footer">
+              <button onClick={() => { setShowUnassignModal(false); setUnassignTeacherId(null); setUnassignTeacherName(''); }} className="btn-secondary">
+                Cancel
+              </button>
+              <button onClick={handleUnassignCoordinator} className="btn-danger">
+                <X className="h-4 w-4" />
+                Unassign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {selectedTeacher && (
-        <TeacherDetailPanel 
-          teacher={selectedTeacher} 
-          onClose={() => setSelectedTeacherId(null)} 
+        <TeacherDetailPanel
+          teacher={selectedTeacher}
+          onClose={() => setSelectedTeacherId(null)}
         />
       )}
     </div>

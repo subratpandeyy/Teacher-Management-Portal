@@ -91,15 +91,15 @@ export default function StudentDashboard() {
       <View className="mt-8 space-y-4">
         <Text className="text-lg font-bold text-slate-900">Quick Actions</Text>
         <Pressable
-          onPress={() => router.push('/(teacher)/chat')}
+          onPress={() => router.push('/(student)/chat')}
           className="flex-row items-center gap-4 rounded-2xl bg-white p-4 shadow-sm"
         >
           <View className="h-10 w-10 items-center justify-center rounded-xl bg-purple-50">
             <Feather name="message-square" size={20} color="#8B5CF6" />
           </View>
           <View className="flex-1">
-            <Text className="font-semibold text-slate-900">Chat with Admin</Text>
-            <Text className="text-xs text-slate-500">Get support or ask questions</Text>
+            <Text className="font-semibold text-slate-900">Chat with Coordinator</Text>
+            <Text className="text-xs text-slate-500">Message your assigned coordinator</Text>
           </View>
           <Feather name="chevron-right" size={20} color="#94A3B8" />
         </Pressable>

@@ -6,6 +6,7 @@ import {
   fetchGroups,
   listTeachers,
 } from '../lib/features';
+import { supabase } from '../lib/supabase';
 import { openDocumentInBrowser } from '../lib/openDocument';
 import type { DocumentTargetType } from '../../../shared/types';
 import type { TeacherRow } from '../lib/supabase';
@@ -22,7 +23,8 @@ import {
   Filter,
   CheckCircle2,
   Clock,
-  ExternalLink
+  ExternalLink,
+  Info
 } from 'lucide-react';
 
 type DeliveryRow = {
@@ -46,7 +48,9 @@ type TeacherUploadRow = {
 
 export function DocumentsPage() {
   const [teachers, setTeachers] = useState<TeacherRow[]>([]);
+  const [allUsers, setAllUsers] = useState<{ id: string; display_name: string | null; role: string }[]>([]);
   const [groups, setGroups] = useState<{ id: string; name: string }[]>([]);
+  const [groupMembers, setGroupMembers] = useState<{ group_id: string; teacher_id: string }[]>([]);
   const [deliveries, setDeliveries] = useState<DeliveryRow[]>([]);
   const [teacherUploads, setTeacherUploads] = useState<TeacherUploadRow[]>([]);
   const [targetType, setTargetType] = useState<DocumentTargetType>('all');
@@ -64,12 +68,16 @@ export function DocumentsPage() {
     void (async () => {
       setLoading(true);
       try {
-        const [{ data: teacherData }, { data: groupData }] = await Promise.all([
+        const [{ data: teacherData }, { data: groupData }, { data: userData }, { data: memberData }] = await Promise.all([
           listTeachers(),
           fetchGroups(),
+          supabase.from('profiles').select('id, display_name, role').is('deleted_at', null).neq('role', 'admin').order('display_name'),
+          supabase.from('group_members').select('group_id, teacher_id'),
         ]);
         setTeachers((teacherData as TeacherRow[]) ?? []);
         setGroups((groupData as { id: string; name: string }[]) ?? []);
+        setAllUsers((userData as { id: string; display_name: string | null; role: string }[]) ?? []);
+        setGroupMembers((memberData as { group_id: string; teacher_id: string }[]) ?? []);
         await loadAll();
       } finally {
         setLoading(false);
@@ -120,21 +128,45 @@ export function DocumentsPage() {
   }
 
   function handleSelectFilesClick() {
-    console.log('[DocumentsPage] Select files button clicked');
     fileInputRef.current?.click();
   }
 
   function handleFilesChange(list: FileList | null) {
-    console.log('[DocumentsPage] files chosen:', list?.length ?? 0);
     setFiles(list);
     if (list?.length) {
       setMessage(`Selected ${list.length} file(s). Click Upload & assign to continue.`);
     }
   }
 
+  const getResolvedRecipients = () => {
+    if (targetType === 'all') {
+      return allUsers;
+    }
+    if (targetType === 'student') {
+      return allUsers.filter(u => u.role === 'student');
+    }
+    if (targetType === 'coordinator') {
+      return allUsers.filter(u => u.role === 'coordinator');
+    }
+    if (targetType === 'teacher_role') {
+      return allUsers.filter(u => u.role === 'teacher');
+    }
+    if (targetType === 'teacher') {
+      return allUsers.filter(u => selectedTeacherIds.includes(u.id));
+    }
+    if (targetType === 'group') {
+      const memberIds = groupMembers.filter(m => m.group_id === targetGroupId).map(m => m.teacher_id);
+      return allUsers.filter(u => memberIds.includes(u.id));
+    }
+    if (targetType === 'groups') {
+      const memberIds = groupMembers.filter(m => selectedGroupIds.includes(m.group_id)).map(m => m.teacher_id);
+      return allUsers.filter(u => memberIds.includes(u.id));
+    }
+    return [];
+  };
+
   async function handleUpload(e: FormEvent) {
     e.preventDefault();
-    console.log('[DocumentsPage] Upload form submit');
 
     if (!files?.length) {
       setMessage('Select at least one file first.');
@@ -150,7 +182,12 @@ export function DocumentsPage() {
       return;
     }
     if (targetType === 'teacher' && selectedTeacherIds.length === 0) {
-      setMessage('Select at least one teacher.');
+      setMessage('Select at least one recipient.');
+      return;
+    }
+
+    if (getResolvedRecipients().length === 0) {
+      setMessage('No recipients matched the selected target.');
       return;
     }
 
@@ -162,7 +199,6 @@ export function DocumentsPage() {
     let lastError = '';
 
     for (const file of Array.from(files)) {
-      console.log('[DocumentsPage] uploading', file.name);
       const { error } = await adminUploadDocument(file, {
         targetType,
         targetId: targetType === 'group' ? targetGroupId || null : null,
@@ -172,10 +208,8 @@ export function DocumentsPage() {
       if (error) {
         fail++;
         lastError = error;
-        console.error('[DocumentsPage] upload failed', error);
       } else {
         ok++;
-        console.log('[DocumentsPage] upload ok', file.name);
       }
     }
 
@@ -203,74 +237,210 @@ export function DocumentsPage() {
   }
 
   if (loading) return (
-    <div className="flex h-full items-center justify-center">
-      <Loader2 className="h-8 w-8 animate-spin text-green-600" />
+    <div className="loading-page">
+      <div className="spinner" aria-label="Loading documents" />
     </div>
   );
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Materials & Library</h2>
-          <p className="text-slate-500">Distribute materials to teachers and manage uploads.</p>
-        </div>
+    <div className="page-container space-y-6">
+      <div className="page-header">
+        <h1 className="page-title">Materials & Library</h1>
+        <p className="page-subtitle">Distribute materials to teachers and manage uploads.</p>
       </div>
+
+      {message && (
+        <div className={`rounded-lg border px-4 py-3 text-sm font-medium ${
+          message.toLowerCase().includes('success') || message.toLowerCase().includes('ok') || message.toLowerCase().includes('uploaded') || message.toLowerCase().includes('shared')
+            ? 'border-green-100 bg-green-50 text-green-700' 
+            : 'border-rose-100 bg-rose-50 text-rose-700'
+        }`} role="alert">
+          {message}
+        </div>
+      )}
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
         {/* Upload Form */}
         <div className="lg:col-span-4">
-          <form onSubmit={handleUpload} className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm space-y-6">
-            <div className="flex items-center gap-3 border-b border-slate-50 pb-4">
-              <div className="h-10 w-10 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600">
-                <Upload className="h-5 w-5" />
-              </div>
-              <h3 className="text-lg font-bold text-slate-900">Upload Material</h3>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Distribution Target</label>
-              <select
-                className="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2 text-sm focus:border-blue-500 focus:outline-none"
-                value={targetType}
-                onChange={(e) => setTargetType(e.target.value as DocumentTargetType)}
-              >
-                <option value="all">Everyone</option>
-                <option value="teacher">Specific Teachers</option>
-                <option value="group">Specific Group</option>
-                <option value="groups">Multiple Groups</option>
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-bold text-slate-700">Select Files</label>
-              <div 
-                onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 cursor-pointer hover:bg-slate-50 transition-colors"
-              >
-                <FileText className="h-8 w-8 text-slate-400" />
-                <p className="text-xs font-medium text-slate-500">Click to browse or drag and drop</p>
-                {files && <p className="text-xs font-bold text-blue-600">{files.length} files selected</p>}
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  multiple
-                  className="hidden"
-                  onChange={(e) => handleFilesChange(e.target.files)}
-                />
+          <form onSubmit={handleUpload} className="card" aria-label="Upload materials form">
+            <div className="card-header">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                  <Upload className="h-5 w-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-slate-900">Upload Material</h2>
+                  <p className="text-xs text-slate-500">Share documents with your organization</p>
+                </div>
               </div>
             </div>
+            <div className="card-body space-y-4">
+              <div>
+                <label className="label" htmlFor="doc-target-type">Distribution Target</label>
+                <select
+                  id="doc-target-type"
+                  className="select"
+                  value={targetType}
+                  onChange={(e) => {
+                    setTargetType(e.target.value as DocumentTargetType);
+                    setSelectedTeacherIds([]);
+                    setSelectedGroupIds([]);
+                    setTargetGroupId('');
+                  }}
+                >
+                  <option value="all">Everyone (organization)</option>
+                  <option value="teacher">Specific users (multi-select)</option>
+                  <option value="student">All students</option>
+                  <option value="coordinator">All coordinators</option>
+                  <option value="teacher_role">All teachers</option>
+                  <option value="group">Single group</option>
+                  <option value="groups">Multiple groups</option>
+                </select>
+              </div>
 
-            <div className="space-y-2">
-              {message && (
-                <p className={`text-xs font-medium ${message.toLowerCase().includes('success') ? 'text-green-600' : 'text-rose-600'}`}>
-                  {message}
+              {targetType === 'teacher' ? (
+                <div>
+                  <label className="label" htmlFor="user-search">Recipients</label>
+                  <div className="relative mb-2">
+                    <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                    <input
+                      id="user-search"
+                      type="text"
+                      placeholder="Search users..."
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="input pl-9"
+                    />
+                  </div>
+                  <div className="max-h-40 overflow-y-auto rounded-lg border border-slate-200 p-2 space-y-1 bg-white">
+                    {allUsers
+                      .filter((u) => u.display_name?.toLowerCase().includes(search.toLowerCase()))
+                      .map((u) => (
+                        <label key={u.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 cursor-pointer text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={selectedTeacherIds.includes(u.id)}
+                            onChange={(e) => {
+                              setSelectedTeacherIds((prev) =>
+                                e.target.checked ? [...prev, u.id] : prev.filter((id) => id !== u.id)
+                              );
+                            }}
+                            className="rounded border-slate-300 text-blue-600 focus:ring-green-500"
+                          />
+                          <span className="flex-1">{u.display_name ?? 'User'}</span>
+                          <span className="text-xs text-slate-400">{u.role}</span>
+                        </label>
+                      ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">{selectedTeacherIds.length} selected</p>
+                </div>
+              ) : null}
+
+              {targetType === 'group' ? (
+                <div>
+                  <label className="label" htmlFor="doc-group-single">Group</label>
+                  <select
+                    id="doc-group-single"
+                    value={targetGroupId}
+                    onChange={(e) => setTargetGroupId(e.target.value)}
+                    className="select"
+                  >
+                    <option value="">Select group...</option>
+                    {groups.map((g) => (
+                      <option key={g.id} value={g.id}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
+
+              {targetType === 'groups' ? (
+                <div>
+                  <label className="label">Groups</label>
+                  <div className="max-h-32 overflow-y-auto rounded-lg border border-slate-200 p-2 space-y-1 bg-white">
+                    {groups.map((g) => (
+                      <label key={g.id} className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-slate-50 cursor-pointer text-sm">
+                        <input
+                          type="checkbox"
+                          checked={selectedGroupIds.includes(g.id)}
+                          onChange={(e) => {
+                            setSelectedGroupIds((prev) =>
+                              e.target.checked ? [...prev, g.id] : prev.filter((id) => id !== g.id)
+                            );
+                          }}
+                          className="rounded border-slate-300 text-blue-600 focus:ring-green-500"
+                        />
+                        {g.name}
+                      </label>
+                    ))}
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">{selectedGroupIds.length} groups selected</p>
+                </div>
+              ) : null}
+
+              {(targetType === 'all' || targetType === 'student' || targetType === 'coordinator' || targetType === 'teacher_role') ? (
+                <div className="rounded-lg bg-blue-50 border border-blue-100 px-3 py-2.5">
+                  <p className="text-xs text-blue-700 flex items-center gap-1.5">
+                    <Info className="h-3.5 w-3.5 shrink-0" />
+                    Materials will be sent to:{' '}
+                    {targetType === 'all' ? 'all users in the organization' :
+                     targetType === 'student' ? 'all students' :
+                     targetType === 'coordinator' ? 'all coordinators' : 'all teachers'}
+                  </p>
+                </div>
+              ) : null}
+
+              {/* Recipient Preview */}
+              <div className="border-t border-slate-100 pt-4">
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">
+                  Recipient Preview ({getResolvedRecipients().length})
                 </p>
-              )}
+                <div className="max-h-28 overflow-y-auto rounded-lg border border-slate-100 bg-slate-50/50 p-2 space-y-1">
+                  {getResolvedRecipients().length === 0 ? (
+                    <p className="text-xs text-slate-400 italic">No recipients resolved.</p>
+                  ) : (
+                    getResolvedRecipients().map(u => (
+                      <div key={u.id} className="text-xs text-slate-600 flex justify-between px-1">
+                        <span className="font-medium truncate">{u.display_name ?? 'User'}</span>
+                        <span className="shrink-0 ml-2">
+                          {u.role === 'admin' ? <span className="role-admin text-[10px]">admin</span> :
+                           u.role === 'coordinator' ? <span className="role-coordinator text-[10px]">coordinator</span> :
+                           u.role === 'teacher' ? <span className="role-teacher text-[10px]">teacher</span> :
+                           <span className="role-student text-[10px]">student</span>}
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <label className="label">Select Files</label>
+                <div
+                  onClick={() => fileInputRef.current?.click()}
+                  className="flex flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-8 cursor-pointer hover:bg-slate-100 transition-colors"
+                  role="button"
+                  tabIndex={0}
+                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') handleSelectFilesClick(); }}
+                  aria-label="Click to select files"
+                >
+                  <FileText className="h-10 w-10 text-slate-300" />
+                  <p className="text-sm font-medium text-slate-500">Click to browse or drag and drop</p>
+                  <p className="text-xs text-slate-400">Supported: PDF, Word, Excel, Images</p>
+                  {files && <p className="badge-blue">{files.length} files selected</p>}
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(e) => handleFilesChange(e.target.files)}
+                  />
+                </div>
+              </div>
+
               <button
                 type="submit"
                 disabled={uploading || !files}
-                className="w-full flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-6 py-2.5 font-bold text-white transition-all hover:bg-blue-700 disabled:opacity-50"
+                className="btn-primary w-full"
               >
                 {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
                 {uploading ? 'Uploading...' : 'Start Upload'}
@@ -282,36 +452,47 @@ export function DocumentsPage() {
         {/* Material Lists */}
         <div className="lg:col-span-8 space-y-6">
           {/* Admin Deliveries */}
-          <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900">Sent Materials</h3>
+          <div className="table-wrap" aria-label="Sent materials">
+            <div className="card-header">
+              <h2 className="text-lg font-bold text-slate-900">Sent Materials</h2>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50/50 text-xs font-bold uppercase tracking-wider text-slate-400">
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3">Document Title</th>
-                    <th className="px-6 py-3">Sent To</th>
-                    <th className="px-6 py-3 text-right">Action</th>
+                    <th>Document Title</th>
+                    <th>Sent To</th>
+                    <th className="text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody>
                   {deliveries.length === 0 ? (
-                    <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400">No sent materials</td></tr>
+                    <tr>
+                      <td colSpan={3} className="px-4 py-8 text-center">
+                        <div className="empty-state py-4">
+                          <FileText className="empty-state-icon" />
+                          <p className="empty-state-title">No sent materials</p>
+                          <p className="empty-state-desc">Upload and distribute materials from the form.</p>
+                        </div>
+                      </td>
+                    </tr>
                   ) : (
                     deliveries.map((d) => (
-                      <tr key={d.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
+                      <tr key={d.id}>
+                        <td>
                           <div className="flex items-center gap-3">
-                            <FileText className="h-4 w-4 text-blue-500" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-blue-50 text-blue-600">
+                              <FileText className="h-4 w-4" />
+                            </div>
                             <span className="font-medium text-slate-700 line-clamp-1">{d.title}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-500">{d.teacherName}</td>
-                        <td className="px-6 py-4 text-right">
-                          <button 
+                        <td className="text-slate-500">{d.teacherName}</td>
+                        <td className="text-right">
+                          <button
                             onClick={() => handleOpen(d)}
-                            className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                            className="btn-ghost btn-sm"
+                            aria-label={`Open ${d.title}`}
                           >
                             <ExternalLink className="h-4 w-4" />
                           </button>
@@ -325,36 +506,51 @@ export function DocumentsPage() {
           </div>
 
           {/* Teacher Uploads */}
-          <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-            <div className="bg-slate-50 px-6 py-4 border-b border-slate-100">
-              <h3 className="font-bold text-slate-900">Teacher Submissions</h3>
+          <div className="table-wrap" aria-label="Teacher submissions">
+            <div className="card-header">
+              <h2 className="text-lg font-bold text-slate-900">Teacher Submissions</h2>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-sm">
-                <thead className="bg-slate-50/50 text-xs font-bold uppercase tracking-wider text-slate-400">
+            <div className="table-responsive">
+              <table className="table">
+                <thead>
                   <tr>
-                    <th className="px-6 py-3">Document</th>
-                    <th className="px-6 py-3">From Teacher</th>
-                    <th className="px-6 py-3 text-right">Action</th>
+                    <th>Document</th>
+                    <th>From Teacher</th>
+                    <th>Submitted</th>
+                    <th className="text-right">Action</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-50">
+                <tbody>
                   {teacherUploads.length === 0 ? (
-                    <tr><td colSpan={3} className="px-6 py-8 text-center text-slate-400">No submissions yet</td></tr>
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center">
+                        <div className="empty-state py-4">
+                          <Upload className="empty-state-icon" />
+                          <p className="empty-state-title">No submissions yet</p>
+                          <p className="empty-state-desc">Teacher uploads will appear here.</p>
+                        </div>
+                      </td>
+                    </tr>
                   ) : (
                     teacherUploads.map((u) => (
-                      <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                        <td className="px-6 py-4">
+                      <tr key={u.id}>
+                        <td>
                           <div className="flex items-center gap-3">
-                            <FileText className="h-4 w-4 text-emerald-500" />
+                            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-50 text-emerald-600">
+                              <FileText className="h-4 w-4" />
+                            </div>
                             <span className="font-medium text-slate-700 line-clamp-1">{u.title}</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-slate-500">{u.teacherName}</td>
-                        <td className="px-6 py-4 text-right">
-                          <button 
+                        <td className="text-slate-500">{u.teacherName}</td>
+                        <td className="text-slate-400 text-xs">
+                          {u.created_at ? new Date(u.created_at).toLocaleDateString() : '—'}
+                        </td>
+                        <td className="text-right">
+                          <button
                             onClick={() => handleOpen(u)}
-                            className="p-2 text-slate-400 hover:text-blue-600 transition-colors"
+                            className="btn-ghost btn-sm"
+                            aria-label={`Open ${u.title}`}
                           >
                             <ExternalLink className="h-4 w-4" />
                           </button>

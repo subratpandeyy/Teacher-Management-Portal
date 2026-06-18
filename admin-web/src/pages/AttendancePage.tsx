@@ -3,7 +3,7 @@ import { attendanceService } from '../core/services/attendanceService';
 import { useAuth } from '../core/auth/AuthContext';
 import { supabase } from '../lib/supabase';
 import type { AttendanceStatus } from '../../../shared/types';
-import { Loader2, Calendar as CalendarIcon } from 'lucide-react';
+import { Loader2, Calendar as CalendarIcon, CheckCircle2, XCircle, AlertCircle, Clock, Users } from 'lucide-react';
 
 type StudentRow = { id: string; display_name: string | null };
 
@@ -93,107 +93,205 @@ export function AttendancePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">Attendance Reports</h2>
-          <p className="text-slate-500">View and manage attendance records.</p>
-        </div>
+    <div className="page-container space-y-6">
+      <div className="page-header">
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <h1 className="page-title">Attendance Reports</h1>
+            <p className="page-subtitle">View and manage attendance records.</p>
+          </div>
 
-        <div className="relative">
-          <CalendarIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-          <input
-            type="date"
-            value={date}
-            onChange={(e) => setDate(e.target.value)}
-            className="rounded-lg border border-slate-200 pl-10 pr-4 py-2 text-sm focus:border-green-500 focus:outline-none"
-          />
+          <div className="relative">
+            <CalendarIcon className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400 pointer-events-none" />
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="input pl-10 w-full sm:w-auto"
+              aria-label="Select date for attendance"
+            />
+          </div>
         </div>
       </div>
 
+      {/* Mark Attendance */}
       {canMark && students.length > 0 ? (
-        <div className="rounded-xl border border-slate-100 bg-white p-6 shadow-sm">
-          <h3 className="mb-4 text-lg font-bold text-slate-900">Mark Attendance</h3>
-          <div className="space-y-3">
-            {students.map((student) => {
-              const current = statusForStudent(student.id);
-              return (
-                <div
-                  key={student.id}
-                  className="flex flex-col gap-3 rounded-lg border border-slate-100 p-4 sm:flex-row sm:items-center sm:justify-between"
-                >
-                  <p className="font-medium text-slate-900">{student.display_name ?? 'Student'}</p>
-                  <div className="flex flex-wrap gap-2">
-                    {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map((status) => (
-                      <button
-                        key={status}
-                        type="button"
-                        disabled={marking === student.id}
-                        onClick={() => handleMark(student.id, status)}
-                        className={`rounded-lg px-3 py-1.5 text-xs font-medium capitalize transition-colors ${
-                          current === status
-                            ? 'bg-green-600 text-white'
-                            : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
-                        }`}
-                      >
-                        {status}
-                      </button>
-                    ))}
+        <div className="card" aria-label="Mark attendance">
+          <div className="card-header">
+            <h2 className="text-lg font-bold text-slate-900">Mark Attendance</h2>
+          </div>
+          <div className="card-body">
+            <div className="space-y-2">
+              {students.map((student) => {
+                const current = statusForStudent(student.id);
+                return (
+                  <div
+                    key={student.id}
+                    className="flex flex-col gap-3 rounded-lg border border-slate-100 bg-white p-3 sm:p-4 sm:flex-row sm:items-center sm:justify-between hover:border-slate-200 transition-colors"
+                  >
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="avatar-sm shrink-0" aria-hidden="true">
+                        {student.display_name?.charAt(0).toUpperCase() ?? '?'}
+                      </div>
+                      <p className="font-medium text-slate-900 truncate text-sm sm:text-base">{student.display_name ?? 'Student'}</p>
+                    </div>
+                    <div className="grid grid-cols-2 sm:flex sm:flex-wrap gap-1.5 sm:gap-2" role="group" aria-label={`Attendance options for ${student.display_name ?? 'Student'}`}>
+                      {(['present', 'absent', 'late', 'excused'] as AttendanceStatus[]).map((status) => (
+                        <button
+                          key={status}
+                          type="button"
+                          disabled={marking === student.id}
+                          onClick={() => handleMark(student.id, status)}
+                          className={`text-xs sm:text-sm rounded-lg border font-medium capitalize transition-all flex items-center justify-center gap-1 px-2.5 py-1.5 sm:px-3 sm:py-1.5 ${
+                            current === status
+                              ? status === 'present'
+                                ? 'bg-blue-600 text-white border-blue-600'
+                                : status === 'absent'
+                                ? 'bg-rose-500 text-white border-rose-500'
+                                : status === 'late'
+                                ? 'bg-amber-500 text-white border-amber-500'
+                                : 'bg-blue-500 text-white border-blue-500'
+                              : 'bg-white text-slate-600 border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                          } ${marking === student.id ? 'opacity-50' : ''}`}
+                        >
+                          {marking === student.id ? (
+                            <Loader2 className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-spin" />
+                          ) : status === 'present' ? (
+                            <CheckCircle2 className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          ) : status === 'absent' ? (
+                            <XCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          ) : status === 'late' ? (
+                            <Clock className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          ) : (
+                            <AlertCircle className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
+                          )}
+                          {status}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
-            })}
+                );
+              })}
+            </div>
           </div>
         </div>
       ) : null}
 
-      <div className="rounded-xl border border-slate-100 bg-white shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 text-xs font-bold uppercase tracking-wider text-slate-500">
-              <tr>
-                <th className="px-6 py-4">Student</th>
-                <th className="px-6 py-4">Group</th>
-                <th className="px-6 py-4">Status</th>
-                <th className="px-6 py-4">Marked By</th>
-                <th className="px-6 py-4 text-right">Date</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-green-600" />
-                  </td>
-                </tr>
-              ) : attendance.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-slate-500">
-                    No records found for this date.
-                  </td>
-                </tr>
-              ) : (
-                attendance.map((record) => (
-                  <tr key={record.id} className="hover:bg-slate-50 transition-colors">
-                    <td className="px-6 py-4 font-medium text-slate-900">{record.student?.display_name}</td>
-                    <td className="px-6 py-4 text-slate-600">{record.group?.name || 'N/A'}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex rounded-full px-2.5 py-0.5 text-xs font-medium ${
-                        record.status === 'present' ? 'bg-emerald-50 text-emerald-700' :
-                        record.status === 'absent' ? 'bg-rose-50 text-rose-700' :
-                        'bg-amber-50 text-amber-700'
-                      }`}>
-                        {record.status}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-slate-600">{record.teacher?.display_name}</td>
-                    <td className="px-6 py-4 text-right text-slate-500">{record.date}</td>
-                  </tr>
-                ))
-              )}
-            </tbody>
-          </table>
+      {canMark && students.length === 0 && (
+        <div className="card">
+          <div className="card-body">
+            <div className="empty-state py-8">
+              <Users className="empty-state-icon" />
+              <p className="empty-state-title">No students assigned</p>
+              <p className="empty-state-desc">You don't have any students assigned for attendance marking.</p>
+            </div>
+          </div>
         </div>
+      )}
+
+      {/* Attendance Records */}
+      <div className="card" aria-label="Attendance records">
+        <div className="card-header">
+          <h2 className="text-lg font-bold text-slate-900">Attendance Records</h2>
+        </div>
+
+        {/* Mobile card view */}
+        {loading ? (
+          <div className="card-body">
+            <div className="flex justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-blue-600" aria-label="Loading records" />
+            </div>
+          </div>
+        ) : attendance.length === 0 ? (
+          <div className="card-body">
+            <div className="empty-state py-4">
+              <CalendarIcon className="empty-state-icon" />
+              <p className="empty-state-title">No records found</p>
+              <p className="empty-state-desc">No attendance records for this date.</p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {/* Mobile cards */}
+            <div className="divide-y divide-slate-100 sm:hidden">
+              {attendance.map((record) => (
+                <div key={record.id} className="px-4 py-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <div className="avatar-sm shrink-0" aria-hidden="true">
+                        {record.student?.display_name?.charAt(0).toUpperCase() ?? '?'}
+                      </div>
+                      <span className="font-medium text-slate-900 text-sm truncate">{record.student?.display_name}</span>
+                    </div>
+                    <span className={`badge capitalize shrink-0 ${
+                      record.status === 'present' ? 'badge-green' :
+                      record.status === 'absent' ? 'badge-rose' :
+                      record.status === 'late' ? 'badge-amber' :
+                      'badge-blue'
+                    }`}>
+                      {record.status === 'present' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                      {record.status === 'absent' && <XCircle className="h-3 w-3 mr-1" />}
+                      {record.status === 'late' && <Clock className="h-3 w-3 mr-1" />}
+                      {record.status === 'excused' && <AlertCircle className="h-3 w-3 mr-1" />}
+                      {record.status}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-slate-400">
+                    <span>Group: {record.group?.name || 'N/A'}</span>
+                    <span>By: {record.teacher?.display_name}</span>
+                  </div>
+                  <p className="text-xs text-slate-400">{record.date}</p>
+                </div>
+              ))}
+            </div>
+
+            {/* Desktop table */}
+            <div className="table-responsive hidden sm:block">
+              <table className="table">
+                <thead>
+                  <tr>
+                    <th>Student</th>
+                    <th>Group</th>
+                    <th>Status</th>
+                    <th>Marked By</th>
+                    <th className="text-right">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {attendance.map((record) => (
+                    <tr key={record.id}>
+                      <td className="font-medium text-slate-900">
+                        <div className="flex items-center gap-3">
+                          <div className="avatar-sm" aria-hidden="true">
+                            {record.student?.display_name?.charAt(0).toUpperCase() ?? '?'}
+                          </div>
+                          {record.student?.display_name}
+                        </div>
+                      </td>
+                      <td className="text-slate-500">{record.group?.name || 'N/A'}</td>
+                      <td>
+                        <span className={`badge capitalize ${
+                          record.status === 'present' ? 'badge-green' :
+                          record.status === 'absent' ? 'badge-rose' :
+                          record.status === 'late' ? 'badge-amber' :
+                          'badge-blue'
+                        }`}>
+                          {record.status === 'present' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+                          {record.status === 'absent' && <XCircle className="h-3 w-3 mr-1" />}
+                          {record.status === 'late' && <Clock className="h-3 w-3 mr-1" />}
+                          {record.status === 'excused' && <AlertCircle className="h-3 w-3 mr-1" />}
+                          {record.status}
+                        </span>
+                      </td>
+                      <td className="text-slate-500">{record.teacher?.display_name}</td>
+                      <td className="text-right text-slate-400 text-xs">{record.date}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

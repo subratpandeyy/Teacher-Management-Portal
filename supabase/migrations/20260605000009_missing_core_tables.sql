@@ -33,12 +33,14 @@ CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON public.notifications(
 -- RLS for Notifications
 ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Users can view their own notifications" ON public.notifications;
 CREATE POLICY "Users can view their own notifications"
   ON public.notifications
   FOR SELECT
   TO authenticated
   USING (user_id = auth.uid());
 
+DROP POLICY IF EXISTS "Users can update their own notifications (mark as read)" ON public.notifications;
 CREATE POLICY "Users can update their own notifications (mark as read)"
   ON public.notifications
   FOR UPDATE
@@ -49,6 +51,7 @@ CREATE POLICY "Users can update their own notifications (mark as read)"
 -- RLS for Settings (Admin only)
 ALTER TABLE public.platform_settings ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Admins can manage platform settings" ON public.platform_settings;
 CREATE POLICY "Admins can manage platform settings"
   ON public.platform_settings
   FOR ALL
@@ -56,6 +59,7 @@ CREATE POLICY "Admins can manage platform settings"
   USING (public.is_admin())
   WITH CHECK (public.is_admin());
 
+DROP POLICY IF EXISTS "Anyone can view general settings" ON public.platform_settings;
 CREATE POLICY "Anyone can view general settings"
   ON public.platform_settings
   FOR SELECT

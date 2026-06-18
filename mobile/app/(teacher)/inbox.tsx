@@ -40,9 +40,12 @@ export default function InboxScreen() {
     load().finally(() => setLoading(false));
   }, [load]);
 
+  const broadcastSubId = useRef(0);
+
   useEffect(() => {
+    const id = ++broadcastSubId.current;
     const channel = supabase
-      .channel(`broadcasts:${teacherId}`)
+      .channel(`broadcasts:${teacherId}:${id}`)
       .on(
         'postgres_changes',
         {
@@ -55,9 +58,12 @@ export default function InboxScreen() {
           void load();
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log(`Channel broadcasts:${teacherId}:${id} status:`, status);
+      });
 
     return () => {
+      console.log(`Removing channel broadcasts:${teacherId}:${id}`);
       supabase.removeChannel(channel);
     };
   }, [teacherId, load]);

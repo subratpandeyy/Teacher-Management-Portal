@@ -2,7 +2,6 @@ import type { UserRole } from '../../../../shared/types';
 
 export type Permission =
   | 'view_analytics'
-  | 'view_financials'
   | 'manage_users'
   | 'manage_groups'
   | 'manage_broadcasts'
@@ -28,7 +27,6 @@ class PermissionService {
   private rolePermissions: Record<UserRole, Permission[]> = {
     admin: [
       'view_analytics',
-      'view_financials',
       'manage_users',
       'manage_groups',
       'manage_broadcasts',
@@ -52,6 +50,7 @@ class PermissionService {
       'submit_reports',
       'view_reports',
       'view_analytics',
+      'manage_groups',
       'chat',
     ],
     teacher: [

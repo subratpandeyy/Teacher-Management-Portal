@@ -71,7 +71,7 @@ export function DailyReportForm() {
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-green-600 py-3 font-semibold text-white transition-colors hover:bg-green-700 disabled:opacity-50"
+        className="w-full rounded-lg bg-blue-600 py-3 font-semibold text-white transition-colors hover:bg-green-700 disabled:opacity-50"
       >
         {loading ? 'Submitting...' : 'Submit Report'}
       </button>
