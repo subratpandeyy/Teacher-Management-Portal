@@ -129,7 +129,7 @@ export function UsersPage() {
     }
   };
 
-  const statusBadge = (status?: string) => {
+  const statusBadge = (status?: string | null) => {
     if (!status || status === 'active') return 'badge-green';
     return 'badge-slate';
   };

@@ -9,6 +9,7 @@ export type Profile = {
   phone?: string | null;
   status?: string | null;
   deleted_at?: string | null;
+  email?: string | null;
 };
 
 export type CoordinatorAssignment = {

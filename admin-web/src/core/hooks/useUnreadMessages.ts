@@ -9,7 +9,7 @@ export function useUnreadMessages(userId: string | undefined) {
   const [totalUnread, setTotalUnread] = useState(0);
   const [conversations, setConversations] = useState<ConversationSummary[]>([]);
   const [loading, setLoading] = useState(true);
-  const refreshRef = useRef<() => Promise<void>>();
+  const refreshRef = useRef<(() => Promise<void>) | null>(null);
 
   const refresh = useCallback(async () => {
     if (!userId) {

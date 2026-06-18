@@ -20,6 +20,7 @@ interface ChatRow {
   created_at: string;
   updated_at?: string;
   deleted_at?: string | null;
+  edited_at?: string | null;
   attachment_url?: string | null;
   attachment_name?: string | null;
   sender?: {
