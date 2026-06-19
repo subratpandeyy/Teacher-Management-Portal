@@ -202,7 +202,8 @@ export default function CoordinatorChat() {
         const { error } = await supabase
           .from('chat_messages')
           .update({ body: trimmed, edited_at: new Date().toISOString() })
-          .eq('id', editingId);
+          .eq('id', editingId)
+          .eq('sender_id', profile.id);
 
         if (error) throw error;
         setEditingId(null);
@@ -245,7 +246,8 @@ export default function CoordinatorChat() {
             const { error } = await supabase
               .from('chat_messages')
               .update({ deleted_at: new Date().toISOString() })
-              .eq('id', msg.id);
+              .eq('id', msg.id)
+              .eq('sender_id', profile!.id);
 
             if (error) throw error;
             loadMessages(conversationId!);

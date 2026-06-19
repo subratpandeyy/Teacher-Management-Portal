@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { Eye, EyeOff, Lock, Mail, ShieldCheck } from 'lucide-react';
+import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import logo from '../assets/logo.png';
 import type { UserRole } from '../../../shared/types';
@@ -74,8 +74,8 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
   return (
     <div className="relative flex min-h-screen overflow-hidden bg-white">
       {/* Decorative blobs */}
-      <div className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full bg-green-50/60" aria-hidden="true" />
-      <div className="pointer-events-none fixed -bottom-32 -left-32 h-96 w-96 rounded-full bg-blue-50/60" aria-hidden="true" />
+      <div className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full lg:block bg-green-50/60 hidden" aria-hidden="true" />
+      <div className="pointer-events-none fixed -bottom-32 -left-32 h-96 w-96 rounded-full lg:block bg-blue-50/60 hidden" aria-hidden="true" />
 
       {/* Left: Branding */}
       <div className="hidden flex-1 flex-col justify-center bg-gradient-to-br from-green-50/40 via-white to-blue-50/40 px-16 lg:flex">
@@ -121,11 +121,8 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
             <img src={logo} alt="GenieClasses" className="mx-auto h-14 w-auto" />
           </div>
 
-          <form onSubmit={handleSubmit} className="card p-8 shadow-lg sm:p-10">
+          <form onSubmit={handleSubmit} className="card p-8 sm:p-10">
             <div className="mb-8 text-center lg:text-left">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-xl bg-blue-600 shadow-sm lg:mx-0">
-                <ShieldCheck className="h-6 w-6 text-white" strokeWidth={2} aria-hidden="true" />
-              </div>
               <h1 className="text-xl font-bold text-slate-900">GenieClasses Teachers Portal</h1>
               <p className="mt-1 text-sm text-slate-500">
                 {mode === 'login' ? 'Sign in to your account' : 'Create a new account'}

@@ -171,7 +171,7 @@ export function AdminLayout({ onSignOut }: { onSignOut: () => void }) {
       </aside>
 
       <div className="flex min-h-screen flex-1 flex-col lg:pl-60">
-        <header className="sticky top-0 z-20 border-b border-gray-100 bg-white/80 backdrop-blur-xl">
+        <header className="sticky top-0 z-20 border-b border-gray-100 bg-white/80 backdrop-blur-xl py-0.5">
           <div className="flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
               <button
@@ -193,11 +193,11 @@ export function AdminLayout({ onSignOut }: { onSignOut: () => void }) {
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="ml-2 flex items-center gap-3 rounded-xl p-1 transition-colors hover:bg-red-500">
+              <div className="ml-2 flex items-center gap-3 rounded-xl p-1 transition-colors text-gray-800 hover:bg-red-500 hover:text-white">
         <button
           type="button"
           onClick={onSignOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-800 transition-all duration-200 hover:text-white"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200"
         >
           <LogOut className="h-4 w-4" strokeWidth={2} />
           Sign out
