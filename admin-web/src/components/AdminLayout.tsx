@@ -11,12 +11,14 @@ import {
   Megaphone,
   Menu,
   MessageSquare,
-  Settings,
+  Search,
+  Bell,
+  HelpCircle,
   UserCheck,
   Users,
   UsersRound,
   X,
-  Bell,
+  ChevronDown,
 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { useAuth } from '../core/auth/AuthContext';
@@ -43,8 +45,14 @@ const navItems: NavItem[] = [
   { to: '/broadcasts', label: 'Broadcasts', icon: Megaphone, allowedRoles: ['admin'] },
   { to: '/documents', label: 'Materials', icon: BookOpen, allowedRoles: ['admin', 'coordinator', 'teacher'] },
   { to: '/chat', label: 'Chat', icon: MessageSquare, allowedRoles: ['admin', 'coordinator', 'teacher'] },
-  { to: '/settings', label: 'Settings', icon: Settings, allowedRoles: ['admin'] },
 ];
+
+const ROLE_BADGES: Record<string, string> = {
+  admin: 'bg-rose-50 text-rose-700',
+  coordinator: 'bg-amber-50 text-amber-700',
+  teacher: 'bg-emerald-50 text-emerald-700',
+  student: 'bg-blue-50 text-blue-700',
+};
 
 const SidebarContent = memo(function SidebarContent({
   onSignOut,
@@ -69,17 +77,17 @@ const SidebarContent = memo(function SidebarContent({
 
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-blue-600 to-blue-500">
-      <div className="flex items-center gap-3 border-b border-slate-100 px-5 py-5">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg">
-          <img src={logo} alt="Genieclasses" className="h-10 w-10 bg-white rounded-lg p-1" />
+      <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600">
+          <img src={logo} alt="Genieclasses" className="h-7 w-7 bg-white rounded-lg p-1" />
         </div>
         <div>
           <p className="text-sm font-bold leading-tight text-white">Genieclasses</p>
-          <p className="text-xs text-slate-200 capitalize">{profile?.role} Portal</p>
+          <p className="text-xs text-gray-300 capitalize">{profile?.role} Portal</p>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 overflow-y-auto px-3 py-4">
+      <nav className="flex-1 space-y-0.5 overflow-y-auto px-3 py-4">
         {filteredLinks.map((l) => (
           <NavLink
             key={l.to}
@@ -87,7 +95,11 @@ const SidebarContent = memo(function SidebarContent({
             end={l.to === '/'}
             onClick={onClose}
             className={({ isActive }) =>
-              `sidebar-link ${isActive ? 'sidebar-link-active' : ''}`
+              `flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150 ${
+                isActive
+                  ? 'bg-blue-50 text-blue-600'
+                  : 'text-white hover:bg-gray-50 hover:text-blue-600'
+              }`
             }
           >
             <l.icon className="h-4 w-4 shrink-0" strokeWidth={2} />
@@ -113,14 +125,6 @@ const SidebarContent = memo(function SidebarContent({
             <p className="truncate text-xs text-white capitalize">{profile?.role}</p>
           </div>
         </div>
-        <button
-          type="button"
-          onClick={onSignOut}
-          className="sidebar-link w-full text-slate-200 hover:bg-red-500 hover:text-white"
-        >
-          <LogOut className="h-4 w-4" strokeWidth={2} />
-          Sign out
-        </button>
       </div>
     </div>
   );
@@ -135,30 +139,30 @@ export function AdminLayout({ onSignOut }: { onSignOut: () => void }) {
   const openDrawer = useCallback(() => setDrawerOpen(true), []);
 
   return (
-    <div className="flex min-h-screen bg-canvas">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-56 flex-col border-r border-slate-200 bg-white lg:flex">
+    <div className="flex min-h-screen bg-gray-50/50">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-60 flex-col border-r border-gray-100 bg-white shadow-sm lg:flex">
         <SidebarContent onSignOut={onSignOut} chatUnread={totalUnread} />
       </aside>
 
       {drawerOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/40 lg:hidden"
+          className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm lg:hidden"
           onClick={closeDrawer}
           aria-hidden="true"
         />
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col border-r border-slate-200 bg-white shadow-xl transition-transform duration-300 lg:hidden ${
+        className={`fixed inset-y-0 left-0 z-50 flex w-72 flex-col bg-blue-600 shadow-xl transition-transform duration-300 lg:hidden ${
           drawerOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center bg-blue-600 justify-end px-4 pt-4">
+        <div className="flex items-center justify-end px-4 py-2">
           <button
             type="button"
             aria-label="Close menu"
             onClick={closeDrawer}
-            className="btn-ghost rounded-lg p-2 bg-white"
+            className="rounded-lg p-2 text-gray-400 hover:bg-gray-100"
           >
             <X className="h-5 w-5" />
           </button>
@@ -166,47 +170,45 @@ export function AdminLayout({ onSignOut }: { onSignOut: () => void }) {
         <SidebarContent onSignOut={onSignOut} onClose={closeDrawer} chatUnread={totalUnread} />
       </aside>
 
-      <div className="flex min-h-screen flex-1 flex-col lg:pl-56">
-        <header className="sticky top-0 z-20 border-b border-slate-200 py-1.5 backdrop-blur supports-[backdrop-filter]:bg-white/30">
+      <div className="flex min-h-screen flex-1 flex-col lg:pl-60">
+        <header className="sticky top-0 z-20 border-b border-gray-100 bg-white/80 backdrop-blur-xl">
           <div className="flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">
               <button
                 type="button"
                 aria-label="Open menu"
                 onClick={openDrawer}
-                className="btn-ghost rounded-lg p-2 lg:hidden"
+                className="rounded-lg p-2 text-gray-400 hover:bg-gray-100 lg:hidden"
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div>
-                <h1 className="text-base font-bold text-slate-900 sm:text-lg">
-                  {profile?.role ? profile.role.charAt(0).toUpperCase() + profile.role.slice(1) : ''} Portal
-                </h1>
-                <p className="text-xs text-slate-600 capitalize">
-                  Welcome back, {profile?.display_name?.split(' ')[0] ?? 'User'}
-                </p>
+              <div className="relative hidden sm:block">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="w-64 rounded-xl border border-gray-100 bg-gray-50 py-2 pl-9 pr-4 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-50"
+                />
               </div>
             </div>
 
-            {/* <div className="flex items-center gap-2">
-              <button
-                type="button"
-                className="btn-ghost relative rounded-lg p-2"
-                aria-label="Notifications"
-              >
-                <Bell className="h-5 w-5 text-slate-500" />
-                {totalUnread > 0 && (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-rose-500 px-1 text-[9px] font-bold text-white">
-                    {totalUnread > 9 ? '9+' : totalUnread}
-                  </span>
-                )}
-              </button>
-            </div> */}
+            <div className="flex items-center gap-2">
+              <div className="ml-2 flex items-center gap-3 rounded-xl p-1 transition-colors hover:bg-red-500">
+        <button
+          type="button"
+          onClick={onSignOut}
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-800 transition-all duration-200 hover:text-white"
+        >
+          <LogOut className="h-4 w-4" strokeWidth={2} />
+          Sign out
+        </button>
+      </div>
+            </div>
           </div>
         </header>
 
         <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
-          <div className="page-container">
+          <div className="mx-auto w-full max-w-7xl">
             <Outlet />
           </div>
         </main>

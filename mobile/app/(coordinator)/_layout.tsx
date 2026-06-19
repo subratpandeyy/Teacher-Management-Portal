@@ -1,11 +1,7 @@
-import { Redirect, Slot, useRouter, usePathname } from 'expo-router';
-import { Feather } from '@expo/vector-icons';
-import { Platform, Text, View, TouchableOpacity } from 'react-native';
-import { useState } from 'react';
+import { Redirect } from 'expo-router';
 import { useAuth } from '../../lib/auth';
-import { AppHeader } from '../../components/AppHeader';
+import { DrawerLayout } from '../../components/DrawerLayout';
 import { LoadingScreen } from '../../components/LoadingScreen';
-import { Logo } from '../../components/Logo';
 
 const MENU_ITEMS = [
   { route: '/(coordinator)/dashboard', icon: 'home', label: 'Dashboard' },
@@ -13,7 +9,7 @@ const MENU_ITEMS = [
   { route: '/(coordinator)/teachers', icon: 'award', label: 'Teachers' },
   { route: '/(coordinator)/tasks', icon: 'check-square', label: 'Tasks' },
   { route: '/(coordinator)/attendance', icon: 'clipboard', label: 'Attendance' },
-  { route: '/(teacher)/groups', icon: 'users', label: 'Groups' },
+  { route: '/(coordinator)/groups', icon: 'users', label: 'Groups' },
   { route: '/(coordinator)/chat', icon: 'message-circle', label: 'Chat' },
   { route: '/(coordinator)/work', icon: 'trending-up', label: 'Work Tracking' },
   { route: '/(coordinator)/profile', icon: 'user', label: 'Profile' },
@@ -21,9 +17,6 @@ const MENU_ITEMS = [
 
 export default function CoordinatorLayout() {
   const { session, profile, loading } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const router = useRouter();
-  const pathname = usePathname();
 
   if (loading) return <LoadingScreen />;
   if (!session) return <Redirect href="/(auth)/login" />;
@@ -32,126 +25,12 @@ export default function CoordinatorLayout() {
   }
 
   return (
-    <View style={{ flex: 1 }}>
-      <AppHeader />
-
-      {/* Sidebar Toggle */}
-      <TouchableOpacity
-        onPress={() => setSidebarOpen(!sidebarOpen)}
-        style={{
-          position: 'absolute',
-          top: Platform.OS === 'ios' ? 60 : 20,
-          right: 16,
-          zIndex: 100,
-          backgroundColor: '#ffffff',
-          borderWidth: 1,
-          borderColor: '#e2e8f0',
-          padding: 8,
-          borderRadius: 12,
-        }}
-      >
-        <Feather
-          name={sidebarOpen ? 'x' : 'menu'}
-          size={24}
-          color="#10B981"
-        />
-      </TouchableOpacity>
-
-      {/* Sidebar */}
-      {sidebarOpen && (
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            width: 260,
-            height: '100%',
-            backgroundColor: '#fff',
-            zIndex: 99,
-            paddingTop: 120,
-            elevation: 12,
-            shadowColor: '#000',
-            shadowOpacity: 0.15,
-            shadowRadius: 12,
-          }}
-        >
-          {/* Logo Section */}
-          <View
-            style={{
-              alignItems: 'center',
-              paddingBottom: 24,
-              borderBottomWidth: 1,
-              borderBottomColor: '#E2E8F0',
-              marginBottom: 12,
-              justifyContent: 'center',
-            }}
-          >
-            <Logo size={80} />
-            <Text style={{ marginTop: 8, fontSize: 16, fontWeight: '700', color: '#0F172A' }}>
-              Coordinator Panel
-            </Text>
-          </View>
-
-          {MENU_ITEMS.map((item) => {
-            const active = pathname.includes(item.route.split('/').pop() || '');
-
-            return (
-              <TouchableOpacity
-                key={item.route}
-                onPress={() => {
-                  router.push(item.route as any);
-                  setSidebarOpen(false);
-                }}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  paddingVertical: 16,
-                  paddingHorizontal: 20,
-                  backgroundColor: active ? '#E8F5E9' : 'transparent',
-                }}
-              >
-                <Feather
-                  name={item.icon}
-                  size={20}
-                  color={active ? '#10B981' : '#64748B'}
-                />
-                <Text
-                  style={{
-                    marginLeft: 12,
-                    fontSize: 16,
-                    color: active ? '#10B981' : '#334155',
-                    fontWeight: active ? '600' : '400',
-                  }}
-                >
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      )}
-
-      {/* Overlay */}
-      {sidebarOpen && (
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setSidebarOpen(false)}
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 260,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0,0,0,0.25)',
-            zIndex: 98,
-          }}
-        />
-      )}
-
-      {/* Current Screen */}
-      <View style={{ flex: 1 }}>
-        <Slot />
-      </View>
-    </View>
+    <DrawerLayout
+      menuItems={MENU_ITEMS}
+      sidebarTitle="Coordinator Panel"
+      activeBgColor="#ECFDF5"
+      activeTextColor="#059669"
+      accentColor="#10B981"
+    />
   );
 }

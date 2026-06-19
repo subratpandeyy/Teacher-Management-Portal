@@ -1,96 +1,76 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import {
-  Users,
-  UserCheck,
-  GraduationCap,
-  UsersRound,
-  ClipboardCheck,
-  CheckSquare,
-  Megaphone,
-  Loader2,
-  MessageSquare,
-  UserPlus,
-  BookOpen,
-  CalendarCheck,
-  Activity,
-  Hash,
-  ArrowUpRight,
-  type LucideIcon,
-} from 'lucide-react';
-import { StatsCard } from '../shared/components/StatsCard';
+import { useEffect, useState } from 'react';
+import { Users, GraduationCap, UsersRound } from 'lucide-react';
 import { useAuth } from '../core/auth/AuthContext';
-import { getDashboardStats, getRecentActivity, relativeTime, type ActivityEvent, type DashboardStats } from '../core/services/analyticsService';
-
-const ACTIVITY_ICONS: Record<ActivityEvent['type'], LucideIcon> = {
-  user_registered: UserPlus,
-  teacher_added: GraduationCap,
-  student_added: UsersRound,
-  task_created: CheckSquare,
-  task_completed: CheckSquare,
-  group_created: Users,
-  chat_sent: MessageSquare,
-  attendance_taken: ClipboardCheck,
-  document_uploaded: BookOpen,
-  assignment_created: CalendarCheck,
-};
-
-const ACTIVITY_COLORS: Record<ActivityEvent['type'], string> = {
-  user_registered: 'bg-blue-50 text-blue-600',
-  teacher_added: 'bg-emerald-50 text-emerald-600',
-  student_added: 'bg-purple-50 text-purple-600',
-  task_created: 'bg-amber-50 text-amber-600',
-  task_completed: 'bg-green-50 text-blue-600',
-  group_created: 'bg-rose-50 text-rose-600',
-  chat_sent: 'bg-cyan-50 text-cyan-600',
-  attendance_taken: 'bg-indigo-50 text-indigo-600',
-  document_uploaded: 'bg-orange-50 text-orange-600',
-  assignment_created: 'bg-teal-50 text-teal-600',
-};
+import {
+  getDashboardStats, getRecentActivity, getUserGrowthTrend,
+  getTaskTrend, getAttendanceTrend, getMessageTrend,
+  type ActivityEvent, type DashboardStats,
+  type UserGrowthPoint, type TaskTrendPoint,
+  type AttendanceTrendPoint, type MessageTrendPoint,
+} from '../core/services/analyticsService';
+import { StatCard } from '../features/dashboard/StatCard';
+import { StudentGrowthChart, TeacherActivityChart, AttendanceTrendGraph, GroupCreationTrend } from '../features/dashboard/AnalyticsCharts';
+import { ActivityFeed } from '../features/dashboard/ActivityFeed';
+import { QuickActions } from '../features/dashboard/QuickActions';
+import { PerformanceCards } from '../features/dashboard/PerformanceCards';
+import { Widgets } from '../features/dashboard/Widgets';
+import { DashboardSkeleton } from '../features/dashboard/DashboardSkeleton';
 
 export function DashboardPage() {
   const { profile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
-
-  const fetchData = useCallback(async () => {
-    if (!profile || authLoading) return;
-    setLoading(true);
-    try {
-      const [s, a] = await Promise.all([
-        getDashboardStats(),
-        getRecentActivity(15),
-      ]);
-      setStats(s);
-      setActivities(a);
-    } catch (err) {
-      console.error('Error fetching dashboard data:', err);
-    } finally {
-      setLoading(false);
-    }
-  }, [profile, authLoading]);
+  const [studentGrowth, setStudentGrowth] = useState<UserGrowthPoint[]>([]);
+  const [taskTrend, setTaskTrend] = useState<TaskTrendPoint[]>([]);
+  const [attendanceTrend, setAttendanceTrend] = useState<AttendanceTrendPoint[]>([]);
+  const [messageTrend, setMessageTrend] = useState<MessageTrendPoint[]>([]);
 
   useEffect(() => {
-    void fetchData();
-  }, [fetchData]);
-
-  const isAdmin = profile?.role === 'admin';
+    if (!profile || authLoading) return;
+    let cancelled = false;
+    Promise.all([
+      getDashboardStats(),
+      getRecentActivity(15),
+      getUserGrowthTrend(30),
+      getTaskTrend(30),
+      getAttendanceTrend(30),
+      getMessageTrend(30),
+    ]).then(([s, a, growth, tasks, attendance, messages]) => {
+      if (!cancelled) {
+        setStats(s);
+        setActivities(a);
+        setStudentGrowth(growth);
+        setTaskTrend(tasks);
+        setAttendanceTrend(attendance);
+        setMessageTrend(messages);
+      }
+    }).catch((err) => {
+      console.error('Error fetching dashboard data:', err);
+    }).finally(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, [profile, authLoading]);
 
   if (loading || authLoading || !stats) {
     return (
-      <div className="loading-page min-h-[60vh]">
-        <Loader2 className="spinner" aria-label="Loading dashboard" />
+      <div className="min-h-[60vh]">
+        <DashboardSkeleton />
       </div>
     );
   }
 
+  const isAdmin = profile?.role === 'admin';
+  const totalUsers = stats.users.totalStudents + stats.users.totalTeachers + stats.users.totalCoordinators + stats.users.totalAdmins;
+
   return (
-    <div className="page-container">
-      <div className="page-header">
-        <h1 className="page-title">
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-gray-900">
           Welcome back, {profile?.display_name ?? 'User'}
         </h1>
-        <p className="page-subtitle">
+        <p className="mt-1 text-sm text-gray-500">
           {isAdmin && 'Platform overview and key metrics at a glance.'}
           {profile?.role === 'coordinator' && 'Manage your cohort and track progress.'}
           {profile?.role === 'teacher' && 'Your classes, materials, and tasks.'}
@@ -98,121 +78,66 @@ export function DashboardPage() {
         </p>
       </div>
 
-      <div className="space-y-8">
-        <section aria-label="Key metrics">
-          <div className="kpi-grid">
-            <StatsCard
-              title="Total Users"
-              value={stats.users.totalStudents + stats.users.totalTeachers + stats.users.totalCoordinators + stats.users.totalAdmins}
-              icon={<UsersRound className="h-5 w-5" />}
-              description="All registered users"
-            />
-            <StatsCard
-              title="Total Teachers"
-              value={stats.users.totalTeachers}
-              icon={<GraduationCap className="h-5 w-5" />}
-              description="Active faculty"
-            />
-            <StatsCard
-              title="Total Students"
-              value={stats.users.totalStudents}
-              icon={<Users className="h-5 w-5" />}
-              description="Enrolled students"
-            />
-            <StatsCard
-              title="Active Groups"
-              value={stats.activeGroups}
-              icon={<UsersRound className="h-5 w-5" />}
-              description="Groups created"
-            />
-          </div>
-        </section>
+      <section aria-label="Key metrics">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <StatCard
+            title="Total Users"
+            value={totalUsers}
+            icon={<UsersRound className="h-5 w-5" />}
+            iconColor="blue"
+            description="All registered users"
+            delay={0}
+          />
+          <StatCard
+            title="Total Teachers"
+            value={stats.users.totalTeachers}
+            icon={<GraduationCap className="h-5 w-5" />}
+            iconColor="emerald"
+            description="Active faculty"
+            delay={0.05}
+          />
+          <StatCard
+            title="Total Students"
+            value={stats.users.totalStudents}
+            icon={<Users className="h-5 w-5" />}
+            iconColor="purple"
+            description="Enrolled students"
+            delay={0.1}
+          />
+          <StatCard
+            title="Active Groups"
+            value={stats.activeGroups}
+            icon={<UsersRound className="h-5 w-5" />}
+            iconColor="amber"
+            description="Groups created"
+            delay={0.15}
+          />
+        </div>
+      </section>
 
-        <div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
-          <div className="lg:col-span-2 space-y-6">
-            <div className="kpi-grid">
-              <StatsCard
-                title="Active Tasks"
-                value={stats.tasks.pending + stats.tasks.inProgress + stats.tasks.overdue}
-                icon={<CheckSquare className="h-5 w-5" />}
-                description={`${stats.tasks.completed} completed of ${stats.tasks.total}`}
-              />
-              <StatsCard
-                title="Task Completion Rate"
-                value={`${stats.tasks.completionRate}%`}
-                icon={<ArrowUpRight className="h-5 w-5" />}
-                description={`${stats.tasks.completed}/${stats.tasks.total} tasks`}
-              />
-              <StatsCard
-                title="Attendance Rate"
-                value={`${stats.attendance.rate}%`}
-                icon={<ClipboardCheck className="h-5 w-5" />}
-                description={`${stats.attendance.present} present of ${stats.attendance.total}`}
-              />
-              {isAdmin && (
-                <StatsCard
-                  title="Messages Today"
-                  value={stats.messagesToday}
-                  icon={<MessageSquare className="h-5 w-5" />}
-                  description="Chat messages sent today"
-                />
-              )}
-              {isAdmin && (
-                <StatsCard
-                  title="Broadcasts"
-                  value={stats.totalBroadcasts}
-                  icon={<Megaphone className="h-5 w-5" />}
-                  description="Total broadcasts"
-                />
-              )}
-              <StatsCard
-                title="Total Coordinators"
-                value={stats.users.totalCoordinators}
-                icon={<UserCheck className="h-5 w-5" />}
-              />
-            </div>
-          </div>
+      <PerformanceCards stats={stats} />
 
-          <aside className="lg:col-span-1" aria-label="Activity feed">
-            <div className="card">
-              <div className="card-header">
-                <h2 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                  <Activity className="h-4 w-4 text-blue-600" />
-                  Recent Activity
-                </h2>
-              </div>
-              <div className="card-body max-h-[500px] overflow-y-auto">
-                {activities.length === 0 ? (
-                  <div className="empty-state py-8">
-                    <Activity className="empty-state-icon" />
-                    <p className="empty-state-desc">No recent activity yet.</p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {activities.map((event) => {
-                      const Icon = ACTIVITY_ICONS[event.type];
-                      return (
-                        <div key={event.id} className="flex items-start gap-3">
-                          <div className={`mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full ${ACTIVITY_COLORS[event.type]}`}>
-                            <Icon className="h-4 w-4" />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-sm text-slate-700 leading-snug">
-                              {event.description}
-                            </p>
-                            <p className="text-xs text-slate-400 mt-0.5">
-                              <Hash className="h-3 w-3 inline mr-0.5" />
-                              {event.type.replace(/_/g, ' ')} · {relativeTime(event.created_at)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            </div>
-          </aside>
+      {/* <section aria-label="Analytics">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <StudentGrowthChart data={studentGrowth} />
+          <TeacherActivityChart data={taskTrend} />
+          <AttendanceTrendGraph data={attendanceTrend} />
+          <GroupCreationTrend data={messageTrend} />
+        </div>
+      </section> */}
+
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
+        <div className="space-y-6 lg:col-span-3">
+          <QuickActions />
+          <Widgets
+            totalUsers={totalUsers}
+            totalTeachers={stats.users.totalTeachers}
+            totalCoordinators={stats.users.totalCoordinators}
+            totalStudents={stats.users.totalStudents}
+          />
+        </div>
+        <div className="lg:col-span-1">
+          <ActivityFeed activities={activities} />
         </div>
       </div>
     </div>
