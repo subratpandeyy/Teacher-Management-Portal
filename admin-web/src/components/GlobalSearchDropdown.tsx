@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Search, X, Loader2, Users, CheckSquare, UsersRound } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -17,7 +17,7 @@ const LABELS: Record<SearchResultType, string> = {
   group: 'Groups',
 };
 
-function highlightMatch(text: string, query: string): JSX.Element {
+function highlightMatch(text: string, query: string): React.ReactNode {
   if (!query || !text) return <>{text}</>;
   const lower = text.toLowerCase();
   const q = query.toLowerCase();
