@@ -5,16 +5,7 @@
 
 -- ═════════════════════════════════════════════════════════════════════════════
 -- 1. Extended conversation types
--- ═════════════════════════════════════════════════════════════════════════════
-DO $$
-BEGIN
-  ALTER TYPE public.conversation_type ADD VALUE IF NOT EXISTS 'teacher_coordinator';
-  ALTER TYPE public.conversation_type ADD VALUE IF NOT EXISTS 'student_coordinator';
-  ALTER TYPE public.conversation_type ADD VALUE IF NOT EXISTS 'coordinator_admin';
-EXCEPTION WHEN duplicate_object THEN NULL;
-END;
-$$;
-
+--    (enum values added in 20260620000002_add_conversation_type_enum_values.sql)
 -- ═════════════════════════════════════════════════════════════════════════════
 -- 2. Determine the correct conversation type for a pair of users
 -- ═════════════════════════════════════════════════════════════════════════════

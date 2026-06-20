@@ -6,6 +6,7 @@ import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
 import { LoadingScreen } from '../../components/LoadingScreen';
 import { Card } from '../../components/ui/Card';
+import { SearchBar } from '../../components/ui/SearchBar';
 
 export default function StudentDashboard() {
   const { profile } = useAuth();
@@ -61,6 +62,8 @@ export default function StudentDashboard() {
         <Text className="text-2xl font-bold text-slate-900">Hello, {profile?.display_name}!</Text>
         <Text className="text-slate-500">Here's your progress overview.</Text>
       </View>
+
+      <SearchBar userId={profile!.id} />
 
       <View className="flex-row flex-wrap gap-4">
         <Card className="w-[47%] items-center py-6">

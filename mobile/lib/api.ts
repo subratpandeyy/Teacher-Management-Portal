@@ -375,6 +375,12 @@ export async function getChatAttachmentUrl(storagePath: string) {
   return { url: data?.signedUrl ?? null, error };
 }
 
+// ─── Global Search ────────────────────────────────────────────────────────────
+export async function globalSearch(query: string, userId: string) {
+  if (!query || query.length < 2) return { data: [], error: null };
+  return supabase.rpc('global_search', { p_query: query, p_user_id: userId });
+}
+
 // ─── Availability ─────────────────────────────────────────────────────────────
 export type AvailabilityEntry = {
   id: string;

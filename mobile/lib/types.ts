@@ -73,6 +73,16 @@ export type AssignedDocument = {
   created_at: string;
 };
 
+export type SearchResultType = 'user' | 'task' | 'group';
+
+export type SearchResult = {
+  result_type: SearchResultType;
+  result_id: string;
+  title: string;
+  subtitle: string;
+  url_path: string;
+};
+
 export type ChatMessage = {
   id: string;
   conversation_id: string;

@@ -72,16 +72,16 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
   }
 
   return (
-    <div className="relative flex min-h-screen overflow-hidden bg-white">
+    <div className="relative flex min-h-screen overflow-hidden bg-gradient-to-b from-blue-600 to-blue-500">
       {/* Decorative blobs */}
-      <div className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full lg:block bg-green-50/60 hidden" aria-hidden="true" />
-      <div className="pointer-events-none fixed -bottom-32 -left-32 h-96 w-96 rounded-full lg:block bg-blue-50/60 hidden" aria-hidden="true" />
+      {/* <div className="pointer-events-none fixed -right-32 -top-32 h-96 w-96 rounded-full lg:block bg-green-50/60 hidden" aria-hidden="true" />
+      <div className="pointer-events-none fixed -bottom-32 -left-32 h-96 w-96 rounded-full lg:block bg-blue-50/60 hidden" aria-hidden="true" /> */}
 
       {/* Left: Branding */}
-      <div className="hidden flex-1 flex-col justify-center bg-gradient-to-br from-green-50/40 via-white to-blue-50/40 px-16 lg:flex">
+      <div className="hidden flex-1 flex-col justify-center bg-white px-16 lg:flex">
         <div className="mx-auto max-w-md">
           <div className="mb-6">
-            <img src={logo} alt="GenieClasses" className="h-16 w-auto" />
+            <img src={logo} alt="GenieClasses" className="h-20 w-auto" />
           </div>
           <h2 className="text-4xl font-bold tracking-tight text-slate-900">
             Manage your teaching community
@@ -117,12 +117,12 @@ export function LoginPage({ onLoggedIn }: { onLoggedIn: () => void }) {
       <div className="flex w-full flex-1 items-center justify-center px-4 py-12 sm:px-8">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
-          <div className="mb-8 text-center lg:hidden">
-            <img src={logo} alt="GenieClasses" className="mx-auto h-14 w-auto" />
-          </div>
 
-          <form onSubmit={handleSubmit} className="card p-8 sm:p-10">
+          <form onSubmit={handleSubmit} className="card p-8 sm:p-10 shadow-lg rounded-2xl">
             <div className="mb-8 text-center lg:text-left">
+            <div className="mb-8 text-center lg:hidden">
+            <img src={logo} alt="GenieClasses" className="mx-auto h-20 w-auto" />
+          </div>
               <h1 className="text-xl font-bold text-slate-900">GenieClasses Teachers Portal</h1>
               <p className="mt-1 text-sm text-slate-500">
                 {mode === 'login' ? 'Sign in to your account' : 'Create a new account'}

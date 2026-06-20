@@ -11,18 +11,15 @@ import {
   Megaphone,
   Menu,
   MessageSquare,
-  Search,
-  Bell,
-  HelpCircle,
   UserCheck,
   Users,
   UsersRound,
   X,
-  ChevronDown,
 } from 'lucide-react';
 import logo from '../assets/logo.png';
 import { useAuth } from '../core/auth/AuthContext';
 import { useUnreadMessagesContext } from '../core/hooks/UnreadMessagesContext';
+import { GlobalSearchDropdown } from './GlobalSearchDropdown';
 import type { UserRole } from '../../../shared/types';
 
 interface NavItem {
@@ -78,8 +75,8 @@ const SidebarContent = memo(function SidebarContent({
   return (
     <div className="flex h-full flex-col bg-gradient-to-b from-blue-600 to-blue-500">
       <div className="flex items-center gap-3 border-b border-gray-100 px-5 py-5">
-        <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-600">
-          <img src={logo} alt="Genieclasses" className="h-7 w-7 bg-white rounded-lg p-1" />
+        <div className="flex items-center justify-center rounded-lg bg-blue-600">
+          <img src={logo} alt="Genieclasses" className="h-20 w-20 bg-white rounded-lg p-1" />
         </div>
         <div>
           <p className="text-sm font-bold leading-tight text-white">Genieclasses</p>
@@ -182,22 +179,17 @@ export function AdminLayout({ onSignOut }: { onSignOut: () => void }) {
               >
                 <Menu className="h-5 w-5" />
               </button>
-              <div className="relative hidden sm:block">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  className="w-64 rounded-xl border border-gray-100 bg-gray-50 py-2 pl-9 pr-4 text-sm text-gray-900 outline-none transition-all placeholder:text-gray-400 focus:border-blue-500 focus:bg-white focus:ring-2 focus:ring-blue-50"
-                />
+              <div className="hidden sm:block">
+                <GlobalSearchDropdown />
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <div className="ml-2 flex items-center gap-3 rounded-xl p-1 transition-colors text-gray-800 hover:bg-red-500 hover:text-white">
+              <div className="ml-2 flex items-center gap-3 rounded-xl p-1  text-sm font-medium duration-500 transition-colors text-gray-800 hover:bg-red-500 hover:text-white">
         <button
           type="button"
           onClick={onSignOut}
-          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-200"
+          className="flex w-full items-center gap-3 rounded-lg px-3 py-2.5"
         >
           <LogOut className="h-4 w-4" strokeWidth={2} />
           Sign out

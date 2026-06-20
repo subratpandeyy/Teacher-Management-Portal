@@ -6,6 +6,7 @@ import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
 import { LoadingScreen } from '../../components/LoadingScreen';
 import { Card } from '../../components/ui/Card';
+import { SearchBar } from '../../components/ui/SearchBar';
 
 export default function CoordinatorDashboard() {
   const { profile } = useAuth();
@@ -105,6 +106,8 @@ export default function CoordinatorDashboard() {
         <Text className="text-2xl font-bold text-slate-900">Welcome, {profile?.display_name}</Text>
         <Text className="text-slate-500">Coordinator Dashboard</Text>
       </View>
+
+      <SearchBar userId={profile!.id} />
 
       {/* Metrics Row */}
       <View className="flex-row flex-wrap gap-4">

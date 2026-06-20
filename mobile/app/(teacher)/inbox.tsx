@@ -15,6 +15,7 @@ import { ErrorBanner } from '../../components/ErrorBanner';
 import { LoadingScreen } from '../../components/LoadingScreen';
 import { Card } from '../../components/ui/Card';
 import { EmptyState } from '../../components/ui/EmptyState';
+import { SearchBar } from '../../components/ui/SearchBar';
 
 export default function InboxScreen() {
   const { user } = useAuth();
@@ -217,6 +218,7 @@ export default function InboxScreen() {
         data={items}
         keyExtractor={(item) => item.recipient_id}
         contentContainerClassName="px-4 py-3 pb-6"
+        ListHeaderComponent={<View className="pb-3"><SearchBar userId={teacherId} /></View>}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#22C55E" />}
         ListEmptyComponent={
           <EmptyState
