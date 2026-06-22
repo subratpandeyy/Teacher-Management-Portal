@@ -10,14 +10,15 @@ import {
 import { StatsCard } from '../shared/components/StatsCard';
 import { useAuth } from '../core/auth/AuthContext';
 import {
-  getTaskAnalytics, getUserGrowthTrend, getTaskTrend,
+  getDashboardStats,
+  getUserGrowthTrend, getTaskTrend,
   getAttendanceTrend, getMessageTrend, getMostActiveGroups,
-  getMostActiveUsers, getTeacherPerformance, getUserStats,
-  getAttendanceAnalytics,
+  getMostActiveUsers, getTeacherPerformance,
   type UserGrowthPoint, type TaskTrendPoint,
   type AttendanceTrendPoint, type MessageTrendPoint,
   type ActiveGroup, type ActiveUser, type TeacherPerformance,
   type TaskAnalytics, type AttendanceAnalytics, type UserStats,
+  type DashboardStats
 } from '../core/services/analyticsService';
 
 type Period = 7 | 30 | 90;
@@ -76,10 +77,8 @@ export function AnalyticsPage() {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [us, ts, ats, ug, tt, at, mt, ag, au, tp] = await Promise.all([
-        getUserStats(),
-        getTaskAnalytics(),
-        getAttendanceAnalytics(),
+      const [dashStats, ug, tt, at, mt, ag, au, tp] = await Promise.all([
+        getDashboardStats(),
         getUserGrowthTrend(period),
         getTaskTrend(period),
         getAttendanceTrend(period),
@@ -88,9 +87,9 @@ export function AnalyticsPage() {
         getMostActiveUsers(5),
         getTeacherPerformance(10),
       ]);
-      setUserStats(us);
-      setTaskStats(ts);
-      setAttendanceStats(ats);
+      setUserStats(dashStats.users);
+      setTaskStats(dashStats.tasks);
+      setAttendanceStats(dashStats.attendance);
       setUserGrowth(ug);
       setTaskTrend(tt);
       setAttendanceTrend(at);

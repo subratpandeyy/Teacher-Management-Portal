@@ -152,7 +152,7 @@ export function ChatPage() {
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-2">
-                        <p className={`truncate ${(unread?.count ?? 0) > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-900'}`}>
+                        <p className={`min-w-0 flex-1 truncate ${(unread?.count ?? 0) > 0 ? 'font-bold text-slate-900' : 'font-medium text-slate-900'}`}>
                           {chatUser.display_name ?? 'User'}
                         </p>
                         <span className={roleClass(chatUser.role)}>{chatUser.role}</span>
@@ -195,7 +195,7 @@ export function ChatPage() {
                   <div className="avatar-sm shrink-0" aria-hidden="true">
                     {users.find(u => u.id === selectedId)?.display_name?.charAt(0).toUpperCase() ?? '?'}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-slate-900 truncate">
                       {users.find(u => u.id === selectedId)?.display_name ?? 'User'}
                     </p>

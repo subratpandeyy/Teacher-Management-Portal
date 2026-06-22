@@ -176,8 +176,27 @@ export default function CoordinatorChat() {
           table: 'chat_messages',
           filter: `conversation_id=eq.${conversationId}`
         },
-        () => {
-          if (loadMessagesRef.current) void loadMessagesRef.current(conversationId);
+        async (payload) => {
+          if (payload.eventType === 'DELETE') {
+            setMessages(prev => prev.filter(m => m.id !== payload.old.id));
+          } else if (payload.eventType === 'INSERT') {
+            const { data } = await supabase
+              .from('chat_messages')
+              .select(`
+                id, conversation_id, sender_id, body, created_at, updated_at, deleted_at, edited_at,
+                sender:profiles!chat_messages_sender_id_fkey(display_name, role)
+              `)
+              .eq('id', payload.new.id)
+              .single();
+            if (data) {
+              setMessages(prev => {
+                if (prev.some(m => m.id === data.id)) return prev; // Dedupe
+                return [...prev, data];
+              });
+            }
+          } else if (payload.eventType === 'UPDATE') {
+            setMessages(prev => prev.map(m => m.id === payload.new.id ? { ...m, ...payload.new } : m));
+          }
         }
       )
       .subscribe((status) => {

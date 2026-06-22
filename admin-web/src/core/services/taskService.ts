@@ -18,6 +18,25 @@ class TaskService {
     return data;
   }
 
+  async getTasksPaginated(page: number, limit: number, filters?: { assigned_to?: string; assigned_by?: string; status?: TaskStatus }) {
+    let query = supabase.from('tasks').select(`
+      *,
+      assigned_to_profile:profiles!tasks_assigned_to_fkey(display_name, role),
+      assigned_by_profile:profiles!tasks_assigned_by_fkey(display_name, role)
+    `, { count: 'exact' });
+
+    if (filters?.assigned_to) query = query.eq('assigned_to', filters.assigned_to);
+    if (filters?.assigned_by) query = query.eq('assigned_by', filters.assigned_by);
+    if (filters?.status) query = query.eq('status', filters.status);
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to);
+    if (error) throw error;
+    return { data, count: count ?? 0 };
+  }
+
   async createTask(task: Omit<Task, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase
       .from('tasks')

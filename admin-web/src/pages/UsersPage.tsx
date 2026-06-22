@@ -13,9 +13,14 @@ import {
 
 export function UsersPage() {
   const [users, setUsers] = useState<Profile[]>([]);
+  const [totalCount, setTotalCount] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 20;
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -30,23 +35,37 @@ export function UsersPage() {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const fetchUsers = useCallback(async () => {
-    setLoading(true);
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search);
+      setPage(1); // Reset page on new search
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  const fetchUsers = useCallback(async (pageNum: number, isLoadMore = false) => {
+    if (isLoadMore) setLoadingMore(true);
+    else setLoading(true);
+
     try {
-      const data = await userService.getUsers({
-        role: roleFilter === 'all' ? undefined : roleFilter
+      const { data, count } = await userService.getUsersPaginated(pageNum, PAGE_SIZE, {
+        role: roleFilter === 'all' ? undefined : roleFilter,
+        search: debouncedSearch
       });
-      setUsers(data || []);
+      
+      setUsers(prev => isLoadMore ? [...prev, ...data] : data);
+      setTotalCount(count);
     } catch (err) {
       console.error('Error fetching users:', err);
     } finally {
       setLoading(false);
+      setLoadingMore(false);
     }
-  }, [roleFilter]);
+  }, [roleFilter, debouncedSearch]);
 
   useEffect(() => {
-    fetchUsers();
-  }, [fetchUsers]);
+    fetchUsers(page, page > 1);
+  }, [fetchUsers, page]);
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,7 +83,8 @@ export function UsersPage() {
       });
       setShowAddModal(false);
       resetForm();
-      fetchUsers();
+      setPage(1);
+      fetchUsers(1);
     } catch (err: any) {
       setError(err?.message || 'Error creating user');
     } finally {
@@ -86,7 +106,7 @@ export function UsersPage() {
       });
       setShowEditModal(false);
       resetForm();
-      fetchUsers();
+      fetchUsers(page);
     } catch (err: any) {
       setError(err?.message || 'Error updating user');
     } finally {
@@ -98,7 +118,7 @@ export function UsersPage() {
     if (!confirm('Are you sure you want to delete this user? (Soft delete preferred)')) return;
     try {
       await userService.deleteUser(userId);
-      fetchUsers();
+      fetchUsers(page);
     } catch (err) {
       console.error('Error deleting user:', err);
     }
@@ -115,9 +135,8 @@ export function UsersPage() {
     setError('');
   };
 
-  const filteredUsers = users.filter(u =>
-    u.display_name?.toLowerCase().includes(search.toLowerCase())
-  );
+  // Local filtering is removed in favor of server-side search
+  const filteredUsers = users;
 
   const roleBadge = (role: string) => {
     switch (role) {

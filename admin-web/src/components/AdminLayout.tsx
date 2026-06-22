@@ -167,7 +167,7 @@ export function AdminLayout({ onSignOut }: { onSignOut: () => void }) {
         <SidebarContent onSignOut={onSignOut} onClose={closeDrawer} chatUnread={totalUnread} />
       </aside>
 
-      <div className="flex min-h-screen flex-1 flex-col lg:pl-60">
+      <div className="flex min-w-0 min-h-screen flex-1 flex-col lg:pl-60">
         <header className="sticky top-0 z-20 border-b border-gray-100 bg-white/80 backdrop-blur-xl py-0.5">
           <div className="flex items-center justify-between px-4 py-3 sm:px-6 lg:px-8">
             <div className="flex items-center gap-3">

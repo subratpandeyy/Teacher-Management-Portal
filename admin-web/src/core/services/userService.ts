@@ -22,6 +22,29 @@ class UserService {
   }
 
   /**
+   * Get all users with optional filtering and pagination
+   */
+  async getUsersPaginated(page: number, limit: number, filters?: { role?: UserRole; search?: string }) {
+    let query = supabase.from('profiles').select('*', { count: 'exact' }).is('deleted_at', null);
+
+    if (filters?.role) {
+      query = query.eq('role', filters.role);
+    }
+
+    if (filters?.search) {
+      query = query.ilike('display_name', `%${filters.search}%`);
+    }
+
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const { data, count, error } = await query.order('created_at', { ascending: false }).range(from, to);
+    if (error) throw error;
+    
+    return { data: data as Profile[], count: count ?? 0 };
+  }
+
+  /**
    * Get students with their assigned coordinator and teacher
    */
   async getStudentsWithAssignments() {
@@ -45,6 +68,33 @@ class UserService {
   }
 
   /**
+   * Get students with their assigned coordinator and teacher (Paginated)
+   */
+  async getStudentsWithAssignmentsPaginated(page: number, limit: number) {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const { data, count, error } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        assignments:coordinator_assignments!coordinator_assignments_student_id_fkey(
+          id,
+          created_at,
+          coordinator:profiles!coordinator_assignments_coordinator_id_fkey(id, display_name),
+          teacher:profiles!coordinator_assignments_teacher_id_fkey(id, display_name)
+        )
+      `, { count: 'exact' })
+      .eq('role', 'student')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+    return { data, count: count ?? 0 };
+  }
+
+  /**
    * Get teachers with their assigned coordinator
    */
   async getTeachersWithAssignments() {
@@ -64,6 +114,32 @@ class UserService {
 
     if (error) throw error;
     return data;
+  }
+
+  /**
+   * Get teachers with their assigned coordinator (Paginated)
+   */
+  async getTeachersWithAssignmentsPaginated(page: number, limit: number) {
+    const from = (page - 1) * limit;
+    const to = from + limit - 1;
+
+    const { data, count, error } = await supabase
+      .from('profiles')
+      .select(`
+        *,
+        assignments:coordinator_assignments!coordinator_assignments_teacher_id_fkey(
+          id,
+          created_at,
+          coordinator:profiles!coordinator_assignments_coordinator_id_fkey(id, display_name)
+        )
+      `, { count: 'exact' })
+      .eq('role', 'teacher')
+      .is('deleted_at', null)
+      .order('created_at', { ascending: false })
+      .range(from, to);
+
+    if (error) throw error;
+    return { data, count: count ?? 0 };
   }
 
   /**

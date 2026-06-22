@@ -233,18 +233,18 @@ export function ChatTab({
           return (
             <div
               key={msg.id}
-              className={`group flex flex-col ${isMe ? 'items-end' : 'items-start'}`}
+              className={`group flex flex-col max-w-full ${isMe ? 'items-end' : 'items-start'}`}
             >
               <div
-                className={`flex items-center gap-2 mb-1.5 ${isMe ? 'flex-row-reverse' : ''}`}
+                className={`flex items-center gap-2 mb-1.5 max-w-full ${isMe ? 'flex-row-reverse' : ''}`}
               >
                 {!isMe && (
-                  <span className="text-xs font-semibold text-slate-700">
+                  <span className="text-xs font-semibold text-slate-700 truncate min-w-0">
                     {msg.sender?.display_name}
                   </span>
                 )}
                 {!isMe && msg.sender?.role && <ChatBadge role={msg.sender.role} />}
-                <span className="text-[11px] text-slate-400">{messageTime}</span>
+                <span className="text-[11px] text-slate-400 shrink-0">{messageTime}</span>
               </div>
 
               <div className={`${isMe ? 'chat-message-me' : 'chat-message-other'} max-w-[85%] md:max-w-[70%] ${deleted ? 'opacity-60' : ''}`}>
@@ -325,7 +325,7 @@ export function ChatTab({
             className="mb-2 flex items-center justify-between rounded-lg bg-rose-50 px-3 py-2 text-xs text-rose-600"
             role="alert"
           >
-            <span className="truncate">{error}</span>
+            <span className="min-w-0 flex-1 truncate">{error}</span>
             <button
               type="button"
               onClick={() => setError('')}
@@ -339,8 +339,8 @@ export function ChatTab({
 
         {editingId && (
           <div className="mb-2 flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-2 text-xs text-blue-600">
-            <Edit2 className="h-3.5 w-3.5" />
-            <span className="flex-1">Editing message</span>
+            <Edit2 className="h-3.5 w-3.5 shrink-0" />
+            <span className="flex-1 min-w-0 truncate">Editing message</span>
             <button
               type="button"
               onClick={() => { setEditingId(null); setText(''); }}
