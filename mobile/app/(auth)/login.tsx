@@ -85,7 +85,7 @@ export default function LoginScreen() {
         <View className="mb-8 items-center">
           <Logo size={80} />
           <Text className="mt-4 text-center text-2xl font-bold text-slate-900">
-            Genieclasses Teachers Portal
+            Genieclasses Portal
           </Text>
           <Text className="mt-2 text-center text-sm text-slate-500">
             {isSignup
@@ -108,7 +108,7 @@ export default function LoginScreen() {
             <View className="mb-4 flex-row items-start gap-2 rounded-xl bg-blue-50 px-3 py-2.5">
               <Feather name="info" size={16} color="#2563EB" style={{ marginTop: 2 }} />
               <Text className="flex-1 text-xs leading-5 text-blue-700">
-                Admins should use the web admin panel. Teachers sign in below.
+                Admins should use the web admin panel. Teachers & Students sign in below.
               </Text>
             </View>
           ) : null}
@@ -252,13 +252,13 @@ export default function LoginScreen() {
             className="items-center rounded-xl border border-slate-200 bg-white py-3 active:bg-slate-50"
           >
             <Text className="text-sm font-semibold text-slate-700">
-              {isSignup ? 'Already have an account? Sign in' : 'New teacher? Create account'}
+              {isSignup ? 'Already have an account? Sign in' : 'New here? Create account'}
             </Text>
           </Pressable>
         </View>
 
         <Text className="mt-6 text-center text-xs text-slate-400">
-          Secure access for Genieclasses teachers
+          Secure access for Genieclasses teachers & students
         </Text>
       </ScrollView>
     </KeyboardAvoidingView>

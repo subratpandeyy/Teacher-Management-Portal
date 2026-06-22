@@ -35,8 +35,8 @@ export function DrawerLayout({
   menuItems,
   sidebarTitle,
   accentColor = '#3B82F6',
-  activeBgColor = '#EFF6FF',
-  activeTextColor = '#2563EB',
+  activeBgColor = '#2196F3',
+  activeTextColor = '#FFFFFF',
 }: DrawerLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
@@ -144,7 +144,7 @@ export function DrawerLayout({
       </Pressable>
 
       <Animated.View
-        className="absolute left-0 top-0 z-40 h-full bg-white"
+        className="absolute left-0 top-0 z-40 h-full bg-blue-500"
         style={{
           width: DRAWER_WIDTH,
           paddingTop: insets.top,
@@ -159,7 +159,7 @@ export function DrawerLayout({
         <View className="mb-2 mt-4 items-center justify-center border-b border-slate-100 pb-6">
           <Logo size={72} />
           {sidebarTitle && (
-            <Text className="mt-2 text-base font-bold text-slate-900">
+            <Text className="mt-2 text-base font-bold text-white">
               {sidebarTitle}
             </Text>
           )}
@@ -191,13 +191,13 @@ export function DrawerLayout({
                   <Feather
                     name={item.icon}
                     size={20}
-                    color={active ? activeTextColor : '#64748B'}
+                    color={active ? activeTextColor : '#ffffff'}
                   />
                 </View>
                 <Text
                   className="ml-3 text-[15px]"
                   style={{
-                    color: active ? activeTextColor : '#334155',
+                    color: active ? activeTextColor : '#ffffff',
                     fontWeight: active ? '600' : '400',
                   }}
                 >

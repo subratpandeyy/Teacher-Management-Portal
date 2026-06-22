@@ -743,13 +743,13 @@ export default function GroupsScreen() {
           <Text className="text-2xl font-bold text-slate-900">Groups</Text>
           <Text className="text-slate-500 text-xs mt-0.5">Chat and collaborate in group channels.</Text>
         </View>
-        <Pressable
+        {/* <Pressable
           onPress={() => setCreateVisible(true)}
           className="flex-row items-center gap-1.5 bg-blue-500 px-4 py-2.5 rounded-xl active:bg-blue-600"
         >
           <Feather name="plus" size={16} color="#fff" />
           <Text className="text-white font-bold text-sm">New Group</Text>
-        </Pressable>
+        </Pressable> */}
       </View>
 
       {/* Tabs */}
@@ -762,14 +762,14 @@ export default function GroupsScreen() {
             My Groups
           </Text>
         </Pressable>
-        <Pressable
+        {/* <Pressable
           onPress={() => { setTab('public'); setSearchQuery(''); }}
           className={`flex-1 py-2.5 items-center rounded-lg ${tab === 'public' ? 'bg-white shadow-sm' : ''}`}
         >
           <Text className={`font-semibold text-sm ${tab === 'public' ? 'text-slate-900' : 'text-slate-500'}`}>
             Discover Public
           </Text>
-        </Pressable>
+        </Pressable> */}
       </View>
 
       {/* Search Input */}
