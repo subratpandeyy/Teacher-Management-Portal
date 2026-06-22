@@ -111,15 +111,15 @@ export default function CoordinatorTeachers() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
 
   if (selectedTeacher) {
     return (
-      <ScrollView className="flex-1 bg-canvas p-4" contentContainerStyle={{ paddingBottom: 60 }}>
+      <ScrollView className="flex-1 bg-slate-50 p-4" contentContainerStyle={{ paddingBottom: 60 }}>
         {/* Back button */}
         <Pressable
           onPress={() => setSelectedTeacher(null)}
@@ -132,8 +132,8 @@ export default function CoordinatorTeachers() {
         {/* Profile Details Card */}
         <Card className="p-5">
           <View className="flex-row items-center gap-4">
-            <View className="h-16 w-16 rounded-full bg-emerald-50 items-center justify-center">
-              <Text className="text-emerald-600 font-bold text-2xl">
+            <View className="h-16 w-16 rounded-full bg-blue-50 items-center justify-center">
+              <Text className="text-blue-600 font-bold text-2xl">
                 {selectedTeacher.display_name?.charAt(0).toUpperCase()}
               </Text>
             </View>
@@ -153,7 +153,7 @@ export default function CoordinatorTeachers() {
 
         {detailLoading ? (
           <View className="py-12 items-center justify-center">
-            <ActivityIndicator size="large" color="#10B981" />
+            <ActivityIndicator size="large" color="#2563EB" />
           </View>
         ) : (
           <View className="space-y-6 mt-6">
@@ -204,8 +204,8 @@ export default function CoordinatorTeachers() {
                         <Text className="font-semibold text-slate-800 text-sm">
                           {entry.kind === 'recurring_weekly' ? 'Weekly' : 'Specific Date Range'}
                         </Text>
-                        <View className="px-2 py-0.5 rounded bg-emerald-50">
-                          <Text className="text-emerald-700 text-xs font-medium">
+                        <View className="px-2 py-0.5 rounded bg-blue-50">
+                          <Text className="text-blue-700 text-xs font-medium">
                             {entry.start_time?.slice(0, 5)} - {entry.end_time?.slice(0, 5)}
                           </Text>
                         </View>
@@ -262,7 +262,7 @@ export default function CoordinatorTeachers() {
   }
 
   return (
-    <View className="flex-1 bg-canvas p-4">
+    <View className="flex-1 bg-slate-50 p-4">
       <View className="mb-4">
         <Text className="text-2xl font-bold text-slate-900">Faculty Management</Text>
         <Text className="text-slate-500 text-sm">Overview of teachers assigned to your scope</Text>
@@ -291,8 +291,8 @@ export default function CoordinatorTeachers() {
             className="flex-row items-center justify-between bg-white p-4 rounded-2xl mb-3 border border-slate-100 shadow-sm"
           >
             <View className="flex-row items-center gap-3 flex-1">
-              <View className="h-12 w-12 rounded-full bg-emerald-50 items-center justify-center">
-                <Text className="text-emerald-600 font-bold text-lg">
+              <View className="h-12 w-12 rounded-full bg-blue-50 items-center justify-center">
+                <Text className="text-blue-600 font-bold text-lg">
                   {item.display_name?.charAt(0).toUpperCase()}
                 </Text>
               </View>

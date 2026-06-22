@@ -4,7 +4,8 @@ import { useAuth } from '../core/auth/AuthContext';
 import {
   getDashboardStats, getRecentActivity, getUserGrowthTrend,
   getTaskTrend, getAttendanceTrend, getMessageTrend,
-  type ActivityEvent, type DashboardStats,
+  getTeacherDashboardStats,
+  type ActivityEvent, type DashboardStats, type TeacherDashboardStats,
   type UserGrowthPoint, type TaskTrendPoint,
   type AttendanceTrendPoint, type MessageTrendPoint,
 } from '../core/services/analyticsService';
@@ -20,6 +21,7 @@ export function DashboardPage() {
   const { profile, loading: authLoading } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [teacherStats, setTeacherStats] = useState<TeacherDashboardStats | null>(null);
   const [activities, setActivities] = useState<ActivityEvent[]>([]);
   const [studentGrowth, setStudentGrowth] = useState<UserGrowthPoint[]>([]);
   const [taskTrend, setTaskTrend] = useState<TaskTrendPoint[]>([]);
@@ -29,31 +31,48 @@ export function DashboardPage() {
   useEffect(() => {
     if (!profile || authLoading) return;
     let cancelled = false;
-    Promise.all([
-      getDashboardStats(),
-      getRecentActivity(15),
-      getUserGrowthTrend(30),
-      getTaskTrend(30),
-      getAttendanceTrend(30),
-      getMessageTrend(30),
-    ]).then(([s, a, growth, tasks, attendance, messages]) => {
-      if (!cancelled) {
-        setStats(s);
-        setActivities(a);
-        setStudentGrowth(growth);
-        setTaskTrend(tasks);
-        setAttendanceTrend(attendance);
-        setMessageTrend(messages);
-      }
-    }).catch((err) => {
-      console.error('Error fetching dashboard data:', err);
-    }).finally(() => {
-      if (!cancelled) setLoading(false);
-    });
+
+    if (profile.role === 'teacher') {
+      Promise.all([
+        getTeacherDashboardStats(profile.id),
+        getRecentActivity(15),
+      ]).then(([ts, a]) => {
+        if (!cancelled) {
+          setTeacherStats(ts);
+          setActivities(a);
+        }
+      }).catch((err) => {
+        console.error('Error fetching teacher dashboard data:', err);
+      }).finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    } else {
+      Promise.all([
+        getDashboardStats(),
+        getRecentActivity(15),
+        getUserGrowthTrend(30),
+        getTaskTrend(30),
+        getAttendanceTrend(30),
+        getMessageTrend(30),
+      ]).then(([s, a, growth, tasks, attendance, messages]) => {
+        if (!cancelled) {
+          setStats(s);
+          setActivities(a);
+          setStudentGrowth(growth);
+          setTaskTrend(tasks);
+          setAttendanceTrend(attendance);
+          setMessageTrend(messages);
+        }
+      }).catch((err) => {
+        console.error('Error fetching dashboard data:', err);
+      }).finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+    }
     return () => { cancelled = true; };
   }, [profile, authLoading]);
 
-  if (loading || authLoading || !stats) {
+  if (loading || authLoading || (profile?.role === 'teacher' ? !teacherStats : !stats)) {
     return (
       <div className="min-h-[60vh]">
         <DashboardSkeleton />
@@ -62,7 +81,7 @@ export function DashboardPage() {
   }
 
   const isAdmin = profile?.role === 'admin';
-  const totalUsers = stats.users.totalStudents + stats.users.totalTeachers + stats.users.totalCoordinators + stats.users.totalAdmins;
+  const totalUsers = stats ? (stats.users.totalStudents + stats.users.totalTeachers + stats.users.totalCoordinators + stats.users.totalAdmins) : 0;
 
   return (
     <div className="space-y-6">
@@ -79,43 +98,80 @@ export function DashboardPage() {
       </div>
 
       <section aria-label="Key metrics">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          <StatCard
-            title="Total Users"
-            value={totalUsers}
-            icon={<UsersRound className="h-5 w-5" />}
-            iconColor="blue"
-            description="All registered users"
-            delay={0}
-          />
-          <StatCard
-            title="Total Teachers"
-            value={stats.users.totalTeachers}
-            icon={<GraduationCap className="h-5 w-5" />}
-            iconColor="emerald"
-            description="Active faculty"
-            delay={0.05}
-          />
-          <StatCard
-            title="Total Students"
-            value={stats.users.totalStudents}
-            icon={<Users className="h-5 w-5" />}
-            iconColor="purple"
-            description="Enrolled students"
-            delay={0.1}
-          />
-          <StatCard
-            title="Active Groups"
-            value={stats.activeGroups}
-            icon={<UsersRound className="h-5 w-5" />}
-            iconColor="amber"
-            description="Groups created"
-            delay={0.15}
-          />
-        </div>
+        {profile?.role === 'teacher' && teacherStats ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="My Students"
+              value={teacherStats.myStudents}
+              icon={<Users className="h-5 w-5" />}
+              iconColor="blue"
+              description="Assigned to me"
+              delay={0}
+            />
+            <StatCard
+              title="My Tasks"
+              value={teacherStats.myTasks.total}
+              icon={<GraduationCap className="h-5 w-5" />}
+              iconColor="emerald"
+              description="Total tasks assigned to me"
+              delay={0.05}
+            />
+            <StatCard
+              title="My Groups"
+              value={teacherStats.myGroups}
+              icon={<UsersRound className="h-5 w-5" />}
+              iconColor="purple"
+              description="Groups I am in"
+              delay={0.1}
+            />
+            <StatCard
+              title="Broadcasts"
+              value={teacherStats.myBroadcasts}
+              icon={<UsersRound className="h-5 w-5" />}
+              iconColor="amber"
+              description="Messages received"
+              delay={0.15}
+            />
+          </div>
+        ) : stats ? (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              title="Total Users"
+              value={totalUsers}
+              icon={<UsersRound className="h-5 w-5" />}
+              iconColor="blue"
+              description="All registered users"
+              delay={0}
+            />
+            <StatCard
+              title="Total Teachers"
+              value={stats.users.totalTeachers}
+              icon={<GraduationCap className="h-5 w-5" />}
+              iconColor="emerald"
+              description="Active faculty"
+              delay={0.05}
+            />
+            <StatCard
+              title="Total Students"
+              value={stats.users.totalStudents}
+              icon={<Users className="h-5 w-5" />}
+              iconColor="purple"
+              description="Enrolled students"
+              delay={0.1}
+            />
+            <StatCard
+              title="Active Groups"
+              value={stats.activeGroups}
+              icon={<UsersRound className="h-5 w-5" />}
+              iconColor="amber"
+              description="Groups created"
+              delay={0.15}
+            />
+          </div>
+        ) : null}
       </section>
 
-      <PerformanceCards stats={stats} />
+      {stats && <PerformanceCards stats={stats} />}
 
       {/* <section aria-label="Analytics">
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
@@ -129,16 +185,20 @@ export function DashboardPage() {
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
         <div className="space-y-6 lg:col-span-3">
           <QuickActions />
-          <Widgets
-            totalUsers={totalUsers}
-            totalTeachers={stats.users.totalTeachers}
-            totalCoordinators={stats.users.totalCoordinators}
-            totalStudents={stats.users.totalStudents}
-          />
+          {stats && (
+            <Widgets
+              totalUsers={totalUsers}
+              totalTeachers={stats.users.totalTeachers}
+              totalCoordinators={stats.users.totalCoordinators}
+              totalStudents={stats.users.totalStudents}
+            />
+          )}
         </div>
-        <div className="lg:col-span-1">
-          <ActivityFeed activities={activities} />
-        </div>
+        {profile?.role !== 'teacher' && (
+          <div className="lg:col-span-1">
+            <ActivityFeed activities={activities} />
+          </div>
+        )}
       </div>
     </div>
   );

@@ -5,6 +5,7 @@ import { LoadingScreen } from '../../components/LoadingScreen';
 
 const MENU_ITEMS = [
   { route: '/(coordinator)/dashboard', icon: 'home', label: 'Dashboard' },
+  { route: '/(coordinator)/inbox', icon: 'inbox', label: 'Broadcasts' },
   { route: '/(coordinator)/students', icon: 'users', label: 'Students' },
   { route: '/(coordinator)/teachers', icon: 'award', label: 'Teachers' },
   { route: '/(coordinator)/tasks', icon: 'check-square', label: 'Tasks' },
@@ -28,9 +29,9 @@ export default function CoordinatorLayout() {
     <DrawerLayout
       menuItems={MENU_ITEMS}
       sidebarTitle="Coordinator Panel"
-      activeBgColor="#ECFDF5"
-      activeTextColor="#059669"
-      accentColor="#10B981"
+      activeBgColor="#EFF6FF"
+      activeTextColor="#2563EB"
+      accentColor="#3B82F6"
     />
   );
 }

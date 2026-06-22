@@ -99,8 +99,8 @@ export default function CoordinatorDashboard() {
 
   return (
     <ScrollView 
-      className="flex-1 bg-canvas p-4"
-      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#10B981" />}
+      className="flex-1 bg-slate-50 p-4"
+      refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#2563EB" />}
     >
       <View className="mb-6">
         <Text className="text-2xl font-bold text-slate-900">Welcome, {profile?.display_name}</Text>
@@ -111,15 +111,15 @@ export default function CoordinatorDashboard() {
 
       {/* Metrics Row */}
       <View className="flex-row flex-wrap gap-4">
-        <Card className="w-[47%] items-center py-5">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
-            <Feather name="award" size={24} color="#10B981" />
+        <Card className="flex-1 min-w-[45%] items-center py-5">
+          <View className="h-12 w-12 items-center justify-center rounded-full bg-blue-50">
+            <Feather name="award" size={24} color="#2563EB" />
           </View>
           <Text className="mt-3 text-2xl font-bold text-slate-900">{stats.teacherCount}</Text>
           <Text className="text-xs text-slate-500">Assigned Teachers</Text>
         </Card>
 
-        <Card className="w-[47%] items-center py-5">
+        <Card className="flex-1 min-w-[45%] items-center py-5">
           <View className="h-12 w-12 items-center justify-center rounded-full bg-blue-50">
             <Feather name="users" size={24} color="#3B82F6" />
           </View>
@@ -127,7 +127,7 @@ export default function CoordinatorDashboard() {
           <Text className="text-xs text-slate-500">Assigned Students</Text>
         </Card>
 
-        <Card className="w-[47%] items-center py-5">
+        <Card className="flex-1 min-w-[45%] items-center py-5">
           <View className="h-12 w-12 items-center justify-center rounded-full bg-amber-50">
             <Feather name="check-square" size={24} color="#F59E0B" />
           </View>
@@ -135,9 +135,9 @@ export default function CoordinatorDashboard() {
           <Text className="text-xs text-slate-500">Pending Tasks</Text>
         </Card>
 
-        <Card className="w-[47%] items-center py-5">
+        <Card className="flex-1 min-w-[45%] items-center py-5">
           <View className={`h-12 w-12 items-center justify-center rounded-full ${stats.dailyReportSubmitted ? 'bg-green-50' : 'bg-rose-50'}`}>
-            <Feather name="file-text" size={24} color={stats.dailyReportSubmitted ? '#10B981' : '#EF4444'} />
+            <Feather name="file-text" size={24} color={stats.dailyReportSubmitted ? '#2563EB' : '#EF4444'} />
           </View>
           <Text className="mt-3 text-sm font-bold text-slate-900 text-center px-1">
             {stats.dailyReportSubmitted ? 'Submitted' : 'Pending'}
@@ -168,8 +168,8 @@ export default function CoordinatorDashboard() {
           onPress={() => router.push('/(coordinator)/teachers' as any)}
           className="flex-row items-center gap-4 rounded-2xl bg-white p-4 shadow-sm"
         >
-          <View className="h-10 w-10 items-center justify-center rounded-xl bg-emerald-50">
-            <Feather name="award" size={20} color="#10B981" />
+          <View className="h-10 w-10 items-center justify-center rounded-xl bg-blue-50">
+            <Feather name="award" size={20} color="#2563EB" />
           </View>
           <View className="flex-1">
             <Text className="font-semibold text-slate-900">Faculty Overview</Text>

@@ -5,10 +5,11 @@ import { LoadingScreen } from '../../components/LoadingScreen';
 
 const MENU_ITEMS = [
   { route: '/(student)/dashboard', icon: 'home', label: 'Dashboard' },
+  { route: '/(student)/inbox', icon: 'inbox', label: 'Broadcasts' },
   { route: '/(student)/chat', icon: 'message-circle', label: 'Chat' },
-  { route: '/(teacher)/documents', icon: 'file-text', label: 'Materials' },
-  { route: '/(teacher)/groups', icon: 'users', label: 'Groups' },
-  { route: '/(teacher)/profile', icon: 'user', label: 'Profile' },
+  { route: '/(student)/documents', icon: 'file-text', label: 'Materials' },
+  { route: '/(student)/groups', icon: 'users', label: 'Groups' },
+  { route: '/(student)/profile', icon: 'user', label: 'Profile' },
 ] as const;
 
 export default function StudentLayout() {
@@ -21,9 +22,9 @@ export default function StudentLayout() {
   return (
     <DrawerLayout
       menuItems={MENU_ITEMS}
-      activeBgColor="#ECFDF5"
-      activeTextColor="#059669"
-      accentColor="#059669"
+      activeBgColor="#EFF6FF"
+      activeTextColor="#2563EB"
+      accentColor="#3B82F6"
     />
   );
 }

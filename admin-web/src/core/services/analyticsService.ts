@@ -33,6 +33,14 @@ export interface DashboardStats {
   messagesToday: number;
 }
 
+export interface TeacherDashboardStats {
+  myStudents: number;
+  myTasks: TaskAnalytics;
+  myGroups: number;
+  myBroadcasts: number;
+  myAttendance: AttendanceAnalytics;
+}
+
 export interface ActivityEvent {
   id: string;
   type: 'user_registered' | 'teacher_added' | 'student_added' | 'task_created'
@@ -185,6 +193,54 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     activeGroups: groupsRes.count ?? 0,
     totalBroadcasts: broadcastsRes.count ?? 0,
     messagesToday: messagesRes.count ?? 0,
+  };
+}
+
+export async function getTeacherDashboardStats(teacherId: string): Promise<TeacherDashboardStats> {
+  const [studentsRes, tasksData, groupsRes, broadcastsRes, attendanceData] = await Promise.all([
+    supabase.from('teacher_student_assignments').select('student_id', { count: 'exact', head: true }).eq('teacher_id', teacherId),
+    supabase.from('tasks').select('status').eq('assigned_to', teacherId),
+    supabase.from('group_members').select('group_id', { count: 'exact', head: true }).eq('teacher_id', teacherId),
+    supabase.from('broadcast_recipients').select('broadcast_id', { count: 'exact', head: true }).eq('teacher_id', teacherId),
+    supabase.from('attendance').select('status').eq('teacher_id', teacherId),
+  ]);
+
+  const tasks = tasksData.data ?? [];
+  const pending = tasks.filter(t => t.status === 'pending').length;
+  const inProgress = tasks.filter(t => t.status === 'in_progress').length;
+  const completed = tasks.filter(t => t.status === 'completed').length;
+  const overdue = tasks.filter(t => t.status === 'overdue').length;
+  const totalTasks = tasks.length;
+
+  const taskAnalytics: TaskAnalytics = {
+    total: totalTasks,
+    pending,
+    inProgress,
+    completed,
+    overdue,
+    completionRate: totalTasks > 0 ? Math.round((completed / totalTasks) * 100) : 0,
+  };
+
+  const attendance = attendanceData.data ?? [];
+  const totalAttendance = attendance.length;
+  const present = attendance.filter(a => a.status === 'present').length;
+  const absent = attendance.filter(a => a.status === 'absent').length;
+  const late = attendance.filter(a => a.status === 'late').length;
+
+  const attendanceAnalytics: AttendanceAnalytics = {
+    total: totalAttendance,
+    present,
+    absent,
+    late,
+    rate: totalAttendance > 0 ? Math.round((present / totalAttendance) * 100) : 0,
+  };
+
+  return {
+    myStudents: studentsRes.count ?? 0,
+    myTasks: taskAnalytics,
+    myGroups: groupsRes.count ?? 0,
+    myBroadcasts: broadcastsRes.count ?? 0,
+    myAttendance: attendanceAnalytics,
   };
 }
 

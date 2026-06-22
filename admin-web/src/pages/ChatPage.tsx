@@ -95,7 +95,7 @@ export function ChatPage() {
         <p className="page-subtitle">Direct chat with teachers, coordinators, students, and admins.</p>
       </div>
 
-      <div className="flex h-[calc(100vh-16rem)] min-h-[480px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm" aria-label="Chat interface">
+      <div className="flex h-[calc(100vh-10rem)] min-h-[320px] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:h-[calc(100vh-16rem)] md:min-h-[480px]" aria-label="Chat interface">
         {/* Contact sidebar: hidden on mobile when a conversation is open */}
         <aside
           className={`flex w-full flex-col border-r border-slate-100 md:w-80 md:shrink-0 ${

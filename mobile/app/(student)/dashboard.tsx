@@ -1,12 +1,69 @@
 import { Feather } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { ScrollView, Text, View, Pressable } from 'react-native';
+import { ScrollView, Text, View, Pressable, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
 import { LoadingScreen } from '../../components/LoadingScreen';
 import { Card } from '../../components/ui/Card';
 import { SearchBar } from '../../components/ui/SearchBar';
+
+type StatCardProps = {
+  icon: React.ComponentProps<typeof Feather>['name'];
+  iconBg: string;
+  iconColor: string;
+  value: string;
+  label: string;
+};
+
+function StatCard({ icon, iconBg, iconColor, value, label }: StatCardProps) {
+  return (
+    <Card className="flex-1 min-w-[45%] items-center py-5">
+      <View
+        className="h-12 w-12 items-center justify-center rounded-xl"
+        style={{ backgroundColor: iconBg }}
+      >
+        <Feather name={icon} size={22} color={iconColor} />
+      </View>
+      <Text className="mt-3 text-2xl font-bold text-slate-900">{value}</Text>
+      <Text className="mt-0.5 text-xs font-medium text-slate-500">{label}</Text>
+    </Card>
+  );
+}
+
+type ActionCardProps = {
+  icon: React.ComponentProps<typeof Feather>['name'];
+  iconBg: string;
+  iconColor: string;
+  title: string;
+  description: string;
+  onPress: () => void;
+};
+
+function ActionCard({ icon, iconBg, iconColor, title, description, onPress }: ActionCardProps) {
+  return (
+    <Pressable
+      onPress={onPress}
+      className="flex-row items-center gap-4 rounded-2xl border border-slate-100 bg-white p-4 active:bg-slate-50"
+      style={{
+        shadowColor: '#000',
+        shadowOpacity: 0.05,
+        shadowRadius: 6,
+        shadowOffset: { width: 0, height: 2 },
+        elevation: 2,
+      }}
+    >
+      <View className="h-12 w-12 items-center justify-center rounded-xl" style={{ backgroundColor: iconBg }}>
+        <Feather name={icon} size={22} color={iconColor} />
+      </View>
+      <View className="flex-1">
+        <Text className="font-semibold text-slate-900">{title}</Text>
+        <Text className="mt-0.5 text-xs text-slate-500">{description}</Text>
+      </View>
+      <Feather name="chevron-right" size={20} color="#CBD5E1" />
+    </Pressable>
+  );
+}
 
 export default function StudentDashboard() {
   const { profile } = useAuth();
@@ -34,8 +91,8 @@ export default function StudentDashboard() {
 
         const totalAttendance = attendance.data?.length || 0;
         const presentCount = attendance.data?.filter(a => a.status === 'present').length || 0;
-        
-        const avgProgress = progress.data?.length 
+
+        const avgProgress = progress.data?.length
           ? Math.round(progress.data.reduce((acc, curr) => acc + curr.completion_percentage, 0) / progress.data.length)
           : 0;
 
@@ -57,69 +114,62 @@ export default function StudentDashboard() {
   if (loading) return <LoadingScreen label="Loading your progress..." />;
 
   return (
-    <ScrollView className="flex-1 bg-canvas p-4">
+    <ScrollView className="flex-1 bg-slate-50" contentContainerStyle={{ padding: 16, paddingBottom: 32 }}>
       <View className="mb-6">
-        <Text className="text-2xl font-bold text-slate-900">Hello, {profile?.display_name}!</Text>
-        <Text className="text-slate-500">Here's your progress overview.</Text>
+        <Text className="text-2xl font-bold text-slate-900">
+          Hello, {profile?.display_name}!
+        </Text>
+        <Text className="mt-1 text-sm text-slate-500">
+          Here's your progress overview.
+        </Text>
       </View>
 
       <SearchBar userId={profile!.id} />
 
       <View className="flex-row flex-wrap gap-4">
-        <Card className="w-[47%] items-center py-6">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-emerald-50">
-            <Feather name="check-circle" size={24} color="#10B981" />
-          </View>
-          <Text className="mt-3 text-2xl font-bold text-slate-900">{stats.attendanceRate}%</Text>
-          <Text className="text-xs text-slate-500">Attendance</Text>
-        </Card>
-
-        <Card className="w-[47%] items-center py-6">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-blue-50">
-            <Feather name="trending-up" size={24} color="#3B82F6" />
-          </View>
-          <Text className="mt-3 text-2xl font-bold text-slate-900">{stats.overallProgress}%</Text>
-          <Text className="text-xs text-slate-500">Progress</Text>
-        </Card>
-
-        <Card className="w-[47%] items-center py-6">
-          <View className="h-12 w-12 items-center justify-center rounded-full bg-amber-50">
-            <Feather name="clipboard" size={24} color="#F59E0B" />
-          </View>
-          <Text className="mt-3 text-2xl font-bold text-slate-900">{stats.upcomingTasks}</Text>
-          <Text className="text-xs text-slate-500">Pending Tasks</Text>
-        </Card>
+        <StatCard
+          icon="check-circle"
+          iconBg="#EEF2FF"
+          iconColor="#4F46E5"
+          value={`${stats.attendanceRate}%`}
+          label="Attendance"
+        />
+        <StatCard
+          icon="trending-up"
+          iconBg="#EFF6FF"
+          iconColor="#3B82F6"
+          value={`${stats.overallProgress}%`}
+          label="Progress"
+        />
+        <StatCard
+          icon="clipboard"
+          iconBg="#FFF7ED"
+          iconColor="#F97316"
+          value={`${stats.upcomingTasks}`}
+          label="Pending Tasks"
+        />
       </View>
 
-      <View className="mt-8 space-y-4">
-        <Text className="text-lg font-bold text-slate-900">Quick Actions</Text>
-        <Pressable
-          onPress={() => router.push('/(student)/chat')}
-          className="flex-row items-center gap-4 rounded-2xl bg-white p-4 shadow-sm"
-        >
-          <View className="h-10 w-10 items-center justify-center rounded-xl bg-purple-50">
-            <Feather name="message-square" size={20} color="#8B5CF6" />
-          </View>
-          <View className="flex-1">
-            <Text className="font-semibold text-slate-900">Chat with Coordinator</Text>
-            <Text className="text-xs text-slate-500">Message your assigned coordinator</Text>
-          </View>
-          <Feather name="chevron-right" size={20} color="#94A3B8" />
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push('/(teacher)/documents')}
-          className="flex-row items-center gap-4 rounded-2xl bg-white p-4 shadow-sm"
-        >
-          <View className="h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
-            <Feather name="book-open" size={20} color="#F97316" />
-          </View>
-          <View className="flex-1">
-            <Text className="font-semibold text-slate-900">My Materials</Text>
-            <Text className="text-xs text-slate-500">Access study documents</Text>
-          </View>
-          <Feather name="chevron-right" size={20} color="#94A3B8" />
-        </Pressable>
+      <View className="mt-8">
+        <Text className="mb-4 text-lg font-bold text-slate-900">Quick Actions</Text>
+        <View className="gap-3">
+          <ActionCard
+            icon="message-square"
+            iconBg="#EEF2FF"
+            iconColor="#4F46E5"
+            title="Chat with Coordinator"
+            description="Message your assigned coordinator"
+            onPress={() => router.push('/(student)/chat')}
+          />
+          <ActionCard
+            icon="book-open"
+            iconBg="#FFF7ED"
+            iconColor="#F97316"
+            title="My Materials"
+            description="Access study documents"
+            onPress={() => router.push('/(teacher)/documents')}
+          />
+        </View>
       </View>
     </ScrollView>
   );

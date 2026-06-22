@@ -97,6 +97,14 @@ function resolveBroadcastRpcTarget(opts: {
     return { targetType: 'teacher' as const, targetId: null, teacherIds, groupIds: null };
   }
 
+  if (opts.targetType === 'coordinator') {
+    return { targetType: 'coordinator' as const, targetId: null, teacherIds: null, groupIds: null };
+  }
+
+  if (opts.targetType === 'student') {
+    return { targetType: 'student' as const, targetId: null, teacherIds: null, groupIds: null };
+  }
+
   if (opts.targetType === 'group') {
     return { targetType: 'group' as const, targetId: opts.targetId ?? null, teacherIds: null, groupIds: null };
   }
@@ -121,6 +129,11 @@ export async function createBroadcast(opts: {
   const t = resolveBroadcastRpcTarget(opts);
   const broadcastId = opts.broadcastId ?? generateUuid();
 
+  console.log('[BROADCAST_DIAG] Selected target type:', opts.targetType);
+  console.log('[BROADCAST_DIAG] Resolved RPC target:', t);
+  console.log('[BROADCAST_DIAG] Explicit teacher IDs:', opts.teacherIds);
+  console.log('[BROADCAST_DIAG] Group IDs:', opts.groupIds);
+
   const { data, error } = await supabase.rpc('admin_create_broadcast', {
     p_title: opts.title,
     p_message: opts.message,
@@ -130,6 +143,8 @@ export async function createBroadcast(opts: {
     p_group_ids: t.groupIds,
     p_broadcast_id: broadcastId,
   });
+
+  console.log('[BROADCAST_DIAG] RPC response:', { data, error });
 
   if (error) return { error: error.message, broadcastId: null };
   return { error: null, broadcastId: (data as string) ?? broadcastId };
@@ -284,53 +299,26 @@ function resolveDocumentRpcTarget(opts: {
   teacherIds?: string[];
   groupIds?: string[];
 }) {
-  if (opts.targetType === 'teacher') {
-    return {
-      targetType: 'teacher' as const,
-      targetId: null,
-      teacherIds: opts.teacherIds?.length ? opts.teacherIds : null,
-      groupIds: null,
-    };
+  const teacherIds = opts.teacherIds?.length ? opts.teacherIds : null;
+  const groupIds = opts.groupIds?.length ? opts.groupIds : null;
+
+  if (opts.targetType === 'teacher' || opts.targetType === 'teacher_role') {
+    if (teacherIds?.length === 1) {
+      return { targetType: 'teacher' as const, targetId: teacherIds[0], teacherIds, groupIds: null };
+    }
+    return { targetType: 'teacher' as const, targetId: null, teacherIds, groupIds: null };
   }
   if (opts.targetType === 'group') {
-    return {
-      targetType: 'group' as const,
-      targetId: opts.targetId ?? null,
-      teacherIds: null,
-      groupIds: null,
-    };
+    return { targetType: 'group' as const, targetId: opts.targetId ?? null, teacherIds: null, groupIds: null };
   }
   if (opts.targetType === 'groups') {
-    return {
-      targetType: 'groups' as const,
-      targetId: null,
-      teacherIds: null,
-      groupIds: opts.groupIds?.length ? opts.groupIds : null,
-    };
+    return { targetType: 'group' as const, targetId: null, teacherIds: null, groupIds };
   }
   if (opts.targetType === 'coordinator') {
-    return {
-      targetType: 'role_coordinator' as const,
-      targetId: null,
-      teacherIds: null,
-      groupIds: null,
-    };
+    return { targetType: 'coordinator' as const, targetId: null, teacherIds: null, groupIds: null };
   }
   if (opts.targetType === 'student') {
-    return {
-      targetType: 'role_student' as const,
-      targetId: null,
-      teacherIds: null,
-      groupIds: null,
-    };
-  }
-  if (opts.targetType === 'teacher_role') {
-    return {
-      targetType: 'role_teacher' as const,
-      targetId: null,
-      teacherIds: null,
-      groupIds: null,
-    };
+    return { targetType: 'student' as const, targetId: null, teacherIds: null, groupIds: null };
   }
   return { targetType: 'all' as const, targetId: null, teacherIds: null, groupIds: null };
 }

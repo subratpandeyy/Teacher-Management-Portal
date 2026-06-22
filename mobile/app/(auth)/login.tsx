@@ -52,7 +52,6 @@ export default function LoginScreen() {
       return;
     }
     if (mode === 'login') {
-      // Route through index so role-based redirects apply after profile loads
       router.replace('/');
     } else {
       setInfo(
@@ -68,9 +67,9 @@ export default function LoginScreen() {
       className="flex-1 bg-white"
     >
       <View className="absolute inset-0 overflow-hidden">
-        <View className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-accent-blue-50 opacity-80" />
-        <View className="absolute -left-12 top-1/3 h-40 w-40 rounded-full bg-accent-green-50 opacity-90" />
-        <View className="absolute bottom-0 right-0 h-48 w-48 rounded-full bg-accent-blue-100 opacity-60" />
+        <View className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-blue-50 opacity-80" />
+        <View className="absolute -left-12 top-1/3 h-40 w-40 rounded-full bg-slate-50 opacity-90" />
+        <View className="absolute bottom-0 right-0 h-48 w-48 rounded-full bg-blue-50 opacity-60" />
       </View>
 
       <ScrollView
@@ -106,17 +105,17 @@ export default function LoginScreen() {
           }}
         >
           {isAdminHint ? (
-            <View className="mb-4 flex-row items-start gap-2 rounded-xl bg-accent-blue-50 px-3 py-2.5">
+            <View className="mb-4 flex-row items-start gap-2 rounded-xl bg-blue-50 px-3 py-2.5">
               <Feather name="info" size={16} color="#2563EB" style={{ marginTop: 2 }} />
-              <Text className="flex-1 text-xs leading-5 text-accent-blue-700">
+              <Text className="flex-1 text-xs leading-5 text-blue-700">
                 Admins should use the web admin panel. Teachers sign in below.
               </Text>
             </View>
           ) : null}
 
           {info ? (
-            <View className="mb-4 rounded-xl bg-accent-green-50 px-3 py-2.5">
-              <Text className="text-sm text-accent-green-700">{info}</Text>
+            <View className="mb-4 rounded-xl bg-blue-50 px-3 py-2.5">
+              <Text className="text-sm text-blue-700">{info}</Text>
             </View>
           ) : null}
 
@@ -131,10 +130,10 @@ export default function LoginScreen() {
                     key={r}
                     onPress={() => setRole(r)}
                     className={`flex-1 rounded-xl border py-2.5 items-center ${
-                      role === r ? 'bg-accent-blue-50 border-accent-blue-200' : 'bg-slate-50 border-slate-200'
+                      role === r ? 'border-blue-200 bg-blue-50' : 'border-slate-200 bg-slate-50'
                     }`}
                   >
-                    <Text className={`text-xs font-medium capitalize ${role === r ? 'text-accent-blue-700' : 'text-slate-500'}`}>
+                    <Text className={`text-xs font-medium capitalize ${role === r ? 'text-blue-700' : 'text-slate-500'}`}>
                       {r}
                     </Text>
                   </Pressable>
@@ -201,7 +200,9 @@ export default function LoginScreen() {
                 className="flex-row items-center gap-2"
               >
                 <View
-                  className={`h-5 w-5 items-center justify-center rounded-md border ${rememberMe ? 'border-accent-green-500 bg-accent-green-500' : 'border-slate-300 bg-white'}`}
+                  className={`h-5 w-5 items-center justify-center rounded-md border ${
+                    rememberMe ? 'border-blue-500 bg-blue-500' : 'border-slate-300 bg-white'
+                  }`}
                 >
                   {rememberMe ? <Feather name="check" size={14} color="#fff" /> : null}
                 </View>
@@ -215,7 +216,7 @@ export default function LoginScreen() {
                   )
                 }
               >
-                <Text className="text-sm font-medium text-accent-blue-600">Forgot password?</Text>
+                <Text className="text-sm font-medium text-blue-600">Forgot password?</Text>
               </Pressable>
             </View>
           ) : null}
@@ -223,7 +224,14 @@ export default function LoginScreen() {
           <Pressable
             onPress={handleSubmit}
             disabled={loading}
-            className="mt-2 items-center rounded-xl bg-accent-green-500 py-3.5 active:bg-accent-blue-600 disabled:opacity-60"
+            className="mt-2 items-center rounded-xl bg-blue-500 py-3.5 active:bg-blue-600 disabled:opacity-60"
+            style={{
+              shadowColor: '#3B82F6',
+              shadowOpacity: 0.25,
+              shadowRadius: 8,
+              shadowOffset: { width: 0, height: 4 },
+              elevation: 4,
+            }}
           >
             <Text className="text-base font-semibold text-white">
               {loading ? 'Please wait…' : isSignup ? 'Create account' : 'Sign in'}
@@ -241,7 +249,7 @@ export default function LoginScreen() {
               setMode(isSignup ? 'login' : 'signup');
               setError('');
             }}
-            className="items-center rounded-xl border border-slate-200 bg-slate-50 py-3"
+            className="items-center rounded-xl border border-slate-200 bg-white py-3 active:bg-slate-50"
           >
             <Text className="text-sm font-semibold text-slate-700">
               {isSignup ? 'Already have an account? Sign in' : 'New teacher? Create account'}

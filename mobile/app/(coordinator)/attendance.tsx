@@ -159,14 +159,14 @@ export default function CoordinatorAttendance() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-canvas p-4">
+    <View className="flex-1 bg-slate-50 p-4">
       {/* Header */}
       <View className="mb-4">
         <Text className="text-2xl font-bold text-slate-900">Attendance Monitoring</Text>
@@ -215,7 +215,7 @@ export default function CoordinatorAttendance() {
                 </View>
 
                 {isProcessing ? (
-                  <ActivityIndicator size="small" color="#10B981" />
+                  <ActivityIndicator size="small" color="#2563EB" />
                 ) : (
                   <View className={`px-3 py-1 rounded-full ${badge.bg}`}>
                     <Text className={`text-xs font-bold ${badge.txtColor}`}>{badge.text}</Text>

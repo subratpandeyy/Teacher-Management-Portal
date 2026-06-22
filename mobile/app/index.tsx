@@ -23,7 +23,7 @@ export default function Index() {
           </Text>
           <Pressable 
             onPress={() => supabase.auth.signOut()}
-            className="mt-8 w-full rounded-xl bg-accent-blue-500 py-3.5 items-center active:bg-accent-blue-600"
+            className="mt-8 w-full rounded-xl bg-blue-500 py-3.5 items-center active:bg-blue-600"
           >
             <Text className="font-bold text-white">Sign Out & Try Again</Text>
           </Pressable>

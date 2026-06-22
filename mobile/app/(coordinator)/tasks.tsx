@@ -238,14 +238,14 @@ export default function CoordinatorTasks() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
 
   return (
-    <View className="flex-1 bg-canvas p-4">
+    <View className="flex-1 bg-slate-50 p-4">
       {/* Header */}
       <View className="flex-row justify-between items-center mb-4">
         <View>
@@ -254,7 +254,7 @@ export default function CoordinatorTasks() {
         </View>
         <Pressable
           onPress={handleOpenCreateModal}
-          className="bg-emerald-500 flex-row items-center gap-1.5 px-4 py-2.5 rounded-xl shadow-sm"
+          className="bg-blue-500 flex-row items-center gap-1.5 px-4 py-2.5 rounded-xl shadow-sm"
         >
           <Feather name="plus" size={18} color="white" />
           <Text className="text-white font-bold text-sm">Create Task</Text>
@@ -280,7 +280,7 @@ export default function CoordinatorTasks() {
           <Pressable
             key={status}
             onPress={() => setStatusFilter(status)}
-            className={`px-3 py-1.5 rounded-full ${statusFilter === status ? 'bg-emerald-500' : 'bg-slate-100'}`}
+            className={`px-3 py-1.5 rounded-full ${statusFilter === status ? 'bg-blue-500' : 'bg-slate-100'}`}
           >
             <Text className={`text-xs font-semibold capitalize ${statusFilter === status ? 'text-white' : 'text-slate-600'}`}>
               {status === 'all' ? 'All Tasks' : status.replace('_', ' ')}
@@ -311,7 +311,7 @@ export default function CoordinatorTasks() {
                   <Feather
                     name={item.status === 'completed' ? 'check-circle' : 'circle'}
                     size={22}
-                    color={item.status === 'completed' ? '#10B981' : '#CBD5E1'}
+                    color={item.status === 'completed' ? '#2563EB' : '#CBD5E1'}
                   />
                 </Pressable>
               </View>
@@ -419,7 +419,7 @@ export default function CoordinatorTasks() {
               <View>
                 <Text className="text-slate-700 text-xs font-bold mb-1.5">Assign To (Scope Users)</Text>
                 {loadingAssignees ? (
-                  <ActivityIndicator size="small" color="#10B981" />
+                  <ActivityIndicator size="small" color="#2563EB" />
                 ) : scopeAssignees.length === 0 ? (
                   <Text className="text-xs text-rose-500 italic">No teachers or students in your scope to assign tasks to.</Text>
                 ) : (
@@ -493,7 +493,7 @@ export default function CoordinatorTasks() {
             <Pressable
               onPress={handleSaveTask}
               disabled={scopeAssignees.length === 0}
-              className={`py-3.5 rounded-xl items-center shadow-sm ${scopeAssignees.length === 0 ? 'bg-slate-300' : 'bg-emerald-500'}`}
+              className={`py-3.5 rounded-xl items-center shadow-sm ${scopeAssignees.length === 0 ? 'bg-slate-300' : 'bg-blue-500'}`}
             >
               <Text className="text-white font-bold text-base">
                 {editingTask ? 'Save Changes' : 'Create Task'}

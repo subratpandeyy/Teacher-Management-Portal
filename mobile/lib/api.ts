@@ -53,6 +53,50 @@ export async function fetchBroadcasts(_teacherId: string) {
   return { data: items, error: null };
 }
 
+export async function fetchMyBroadcasts(userId: string) {
+  const { data, error } = await supabase
+    .from('broadcast_recipients')
+    .select(`
+      id,
+      broadcast_id,
+      read_at,
+      created_at,
+      broadcast:broadcasts (
+        id,
+        title,
+        message,
+        body,
+        attachment_url,
+        attachment_name,
+        published_at,
+        target_type,
+        target_id
+      )
+    `)
+    .eq('teacher_id', userId)
+    .order('created_at', { ascending: false });
+
+  if (error) return { data: [] as TeacherBroadcast[], error };
+
+  const items: TeacherBroadcast[] = (data ?? []).map((row: Record<string, unknown>) => {
+    const bc = row.broadcast as Record<string, unknown> | undefined;
+    return {
+      recipient_id: String(row.id),
+      broadcast_id: String(row.broadcast_id),
+      title: String(bc?.title ?? ''),
+      message: String(bc?.message ?? bc?.body ?? ''),
+      published_at: String(bc?.published_at ?? row.created_at),
+      attachment_url: (bc?.attachment_url as string | null) ?? null,
+      attachment_name: (bc?.attachment_name as string | null) ?? null,
+      attachments: [],
+      read_at: (row.read_at as string | null) ?? null,
+      created_at: String(row.created_at),
+    };
+  });
+
+  return { data: items, error: null };
+}
+
 export async function markBroadcastRead(recipientId: string, _teacherId: string) {
   return supabase.rpc('mark_broadcast_read', { p_recipient_id: recipientId });
 }

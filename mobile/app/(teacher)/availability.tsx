@@ -71,7 +71,7 @@ export default function AvailabilityScreen() {
   if (loading) return <LoadingScreen label="Loading availability…" />;
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1 bg-slate-50">
       <ErrorBanner message={error} onDismiss={() => setError('')} />
       <FlatList
         data={entries}
@@ -86,7 +86,7 @@ export default function AvailabilityScreen() {
             <View className="mb-3 flex-row gap-2">
               <Pressable
                 onPress={() => setKind('date_range')}
-                className={`flex-1 rounded-xl py-2.5 ${kind === 'date_range' ? 'bg-accent-blue-500' : 'bg-slate-100'}`}
+                className={`flex-1 rounded-xl py-2.5 ${kind === 'date_range' ? 'bg-blue-500' : 'bg-slate-100'}`}
               >
                 <Text
                   className={`text-center text-sm font-medium ${kind === 'date_range' ? 'text-white' : 'text-slate-600'}`}
@@ -96,7 +96,7 @@ export default function AvailabilityScreen() {
               </Pressable>
               <Pressable
                 onPress={() => setKind('recurring_weekly')}
-                className={`flex-1 rounded-xl py-2.5 ${kind === 'recurring_weekly' ? 'bg-accent-green-500' : 'bg-slate-100'}`}
+                className={`flex-1 rounded-xl py-2.5 ${kind === 'recurring_weekly' ? 'bg-blue-500' : 'bg-slate-100'}`}
               >
                 <Text
                   className={`text-center text-sm font-medium ${kind === 'recurring_weekly' ? 'text-white' : 'text-slate-600'}`}
@@ -131,10 +131,10 @@ export default function AvailabilityScreen() {
                   <Pressable
                     key={d}
                     onPress={() => setDayOfWeek(String(i))}
-                    className={`rounded-lg px-3 py-2 ${dayOfWeek === String(i) ? 'bg-accent-blue-500' : 'bg-accent-blue-50'}`}
+                    className={`rounded-lg px-3 py-2 ${dayOfWeek === String(i) ? 'bg-blue-500' : 'bg-blue-50'}`}
                   >
                     <Text
-                      className={`text-xs font-semibold ${dayOfWeek === String(i) ? 'text-white' : 'text-accent-blue-700'}`}
+                      className={`text-xs font-semibold ${dayOfWeek === String(i) ? 'text-white' : 'text-blue-700'}`}
                     >
                       {d}
                     </Text>
@@ -172,7 +172,7 @@ export default function AvailabilityScreen() {
             />
             <Pressable
               onPress={save}
-              className="mt-4 flex-row items-center justify-center gap-2 rounded-xl bg-accent-blue-500 py-3"
+              className="mt-4 flex-row items-center justify-center gap-2 rounded-xl bg-blue-500 py-3"
             >
               <Feather name="clock" size={18} color="#fff" />
               <Text className="font-semibold text-white">Save availability</Text>
@@ -188,7 +188,7 @@ export default function AvailabilityScreen() {
         }
         renderItem={({ item }) => (
           <Card className="mb-2 mt-2 flex-row items-center gap-3">
-            <View className="h-10 w-10 items-center justify-center rounded-xl bg-accent-blue-100">
+            <View className="h-10 w-10 items-center justify-center rounded-xl bg-blue-100">
               <Feather name="clock" size={18} color="#2563EB" />
             </View>
             <View className="flex-1">

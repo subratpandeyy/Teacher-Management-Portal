@@ -50,6 +50,7 @@ export default function GroupsScreen() {
   
   // Tabs
   const [tab, setTab] = useState<'my' | 'public'>('my');
+  const [myGroupIds, setMyGroupIds] = useState<Set<string>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
 
   // Modals
@@ -82,6 +83,12 @@ export default function GroupsScreen() {
       const { data, error: err } = await fetchGroups();
       if (err) setError(err.message);
       else setGroups((data as Group[]) ?? []);
+      // Also fetch user's group memberships
+      const { data: memberRows } = await supabase
+        .from('group_members')
+        .select('group_id')
+        .eq('teacher_id', userId);
+      setMyGroupIds(new Set((memberRows ?? []).map(r => r.group_id)));
     } catch (err: any) {
       setError(err?.message ?? 'Failed to load groups');
     } finally {
@@ -447,29 +454,7 @@ export default function GroupsScreen() {
   }
 
   // Filter groups
-  const myGroupsList = groups.filter(g => 
-    g.created_by === userId || 
-    (members.length > 0 && selectedGroup?.id === g.id) || // current selected fallback
-    // Wait, let's determine if user is a member of the group
-    // Realistically, the SELECT policy on groups restricts groups to those visible/joined, so
-    // we can filter "public groups available to join" vs "groups I am already in"
-    // Let's implement that: a group is in "my groups" if RLS returned it and the search tab queries public groups they aren't in.
-    // Actually, since groups returned by fetchGroups() contains groups they created or joined, groups has both!
-    // But wait, what if they want to find public groups they HAVEN'T joined yet?
-    // Let's check: in "public" tab, we show groups of type = 'public' where the user is NOT currently a member.
-    // How do we know if they are a member? We can see if it's in a set, but to keep it simple, they can search.
-    true
-  );
-
-  const myJoinedOrCreatedGroups = groups.filter(g => {
-    // If they created it, it's theirs
-    if (g.created_by === userId) return true;
-    // Or if they are in the list of groups they joined (can be checked if we query their memberships)
-    // To simplify: groups returned by RLS includes public groups as well. So we filter groups by:
-    // If it's private or if the user is a member (but they can also join public groups).
-    // Let's fetch the user's joined groups from the database to be absolutely accurate!
-    return true; // We can show all visible groups in "My Groups" since RLS only shows public/joined ones.
-  });
+  const myJoinedOrCreatedGroups = groups.filter(g => g.created_by === userId || myGroupIds.has(g.id));
 
   const queryFilteredGroups = myJoinedOrCreatedGroups.filter(g => 
     g.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -484,7 +469,7 @@ export default function GroupsScreen() {
   if (selectedGroup) {
     return (
       <KeyboardAvoidingView
-        className="flex-1 bg-canvas"
+        className="flex-1 bg-slate-50"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       >
@@ -564,12 +549,12 @@ export default function GroupsScreen() {
                   <View
                     className={`rounded-2xl px-4 py-2.5 ${
                       mine
-                        ? 'rounded-br-md bg-emerald-500'
+                        ? 'rounded-br-md bg-blue-500'
                         : 'rounded-bl-md border border-slate-100 bg-white'
                     } ${deleted ? 'opacity-60' : ''}`}
                   >
                     {!mine && (
-                      <Text className="mb-1 text-[10px] font-bold text-slate-500">
+                      <Text className="mb-1 text-xs font-bold text-slate-500">
                         {roleLabel}
                       </Text>
                     )}
@@ -584,18 +569,18 @@ export default function GroupsScreen() {
                     {hasAttachment ? (
                       <Pressable
                         onPress={() => openAttachment(item.attachment_url!)}
-                        className={`mt-1 flex-row items-center gap-2 rounded-lg px-2 py-1.5 ${mine ? 'bg-white/20' : 'bg-accent-blue-50'}`}
+                        className={`mt-1 flex-row items-center gap-2 rounded-lg px-2 py-1.5 ${mine ? 'bg-white/20' : 'bg-blue-50'}`}
                       >
                         <Feather name="paperclip" size={14} color={mine ? '#fff' : '#3B82F6'} />
                         <Text
-                          className={`flex-1 text-sm font-medium ${mine ? 'text-white' : 'text-accent-blue-600'}`}
+                          className={`flex-1 text-sm font-medium ${mine ? 'text-white' : 'text-blue-600'}`}
                           numberOfLines={1}
                         >
                           {item.attachment_name ?? 'Attachment'}
                         </Text>
                       </Pressable>
                     ) : null}
-                    <Text className={`text-[8px] text-right mt-1 ${mine ? 'text-emerald-100' : 'text-slate-400'}`}>
+                    <Text className={`text-[10px] text-right mt-1 ${mine ? 'text-blue-100' : 'text-slate-400'}`}>
                       {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </Text>
                   </View>
@@ -610,7 +595,7 @@ export default function GroupsScreen() {
           <Pressable
             disabled={attaching}
             onPress={handleAttach}
-            className="h-11 w-11 items-center justify-center rounded-xl bg-slate-55 border border-slate-200 active:bg-slate-100"
+            className="h-11 w-11 items-center justify-center rounded-xl bg-slate-100 border border-slate-200 active:bg-slate-100"
           >
             {attaching ? (
               <ActivityIndicator size="small" color="#3B82F6" />
@@ -620,7 +605,7 @@ export default function GroupsScreen() {
           </Pressable>
 
           <TextInput
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-base text-slate-850"
+            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 text-base text-slate-800"
             placeholder={editingId ? "Edit message..." : "Type a message..."}
             value={chatText}
             onChangeText={setChatText}
@@ -630,7 +615,7 @@ export default function GroupsScreen() {
           <Pressable
             disabled={sending || !chatText.trim()}
             onPress={handleSend}
-            className={`h-11 px-4 items-center justify-center rounded-xl bg-emerald-500 active:bg-emerald-600 disabled:opacity-50`}
+            className={`h-11 px-4 items-center justify-center rounded-xl bg-blue-500 active:bg-blue-600 disabled:opacity-50`}
           >
             {sending ? (
               <ActivityIndicator size="small" color="#fff" />
@@ -646,7 +631,7 @@ export default function GroupsScreen() {
           animationType="slide"
           onRequestClose={() => setInfoVisible(false)}
         >
-          <View className="flex-1 bg-canvas">
+          <View className="flex-1 bg-slate-50">
             <View className="flex-row items-center justify-between border-b border-slate-100 bg-white px-4 py-4">
               <Text className="text-lg font-bold text-slate-900">Group Info</Text>
               <Pressable onPress={() => setInfoVisible(false)} className="p-1">
@@ -669,7 +654,7 @@ export default function GroupsScreen() {
                 {selectedGroup.membership_rules && (
                   <View className="mb-4">
                     <Text className="text-xs font-bold text-slate-400 uppercase mb-1">Membership Rules</Text>
-                    <Text className="text-slate-650 text-sm italic">{selectedGroup.membership_rules}</Text>
+                    <Text className="text-slate-600 text-sm italic">{selectedGroup.membership_rules}</Text>
                   </View>
                 )}
               </Card>
@@ -691,7 +676,7 @@ export default function GroupsScreen() {
                     <Pressable
                       disabled={!addingMemberId}
                       onPress={handleAddMember}
-                      className="bg-emerald-500 px-4 h-11 items-center justify-center rounded-xl disabled:opacity-50"
+                      className="bg-blue-500 px-4 h-11 items-center justify-center rounded-xl disabled:opacity-50"
                     >
                       <Text className="text-white font-bold text-sm">Add</Text>
                     </Pressable>
@@ -707,7 +692,7 @@ export default function GroupsScreen() {
                     <View key={m.id} className="flex-row items-center justify-between bg-slate-50 p-3 rounded-xl border border-slate-100">
                       <View className="flex-row items-center gap-2">
                         <Text className="text-slate-800 font-medium text-sm">{m.profiles?.display_name}</Text>
-                        <Text className="text-[9px] uppercase font-bold text-slate-400 bg-white border border-slate-100 px-1 rounded">
+                        <Text className="text-[10px] uppercase font-bold text-slate-400 bg-white border border-slate-100 px-1 rounded">
                           {m.profiles?.role}
                         </Text>
                       </View>
@@ -752,7 +737,7 @@ export default function GroupsScreen() {
 
   // Render Group List and Join Tab
   return (
-    <View className="flex-1 bg-canvas p-4">
+    <View className="flex-1 bg-slate-50 p-4">
       <View className="mb-4 flex-row justify-between items-center">
         <View>
           <Text className="text-2xl font-bold text-slate-900">Groups</Text>
@@ -760,7 +745,7 @@ export default function GroupsScreen() {
         </View>
         <Pressable
           onPress={() => setCreateVisible(true)}
-          className="flex-row items-center gap-1.5 bg-emerald-500 px-4 py-2.5 rounded-xl active:bg-emerald-600"
+          className="flex-row items-center gap-1.5 bg-blue-500 px-4 py-2.5 rounded-xl active:bg-blue-600"
         >
           <Feather name="plus" size={16} color="#fff" />
           <Text className="text-white font-bold text-sm">New Group</Text>
@@ -824,7 +809,7 @@ export default function GroupsScreen() {
                   </Text>
                 )}
                 {item.creator_role && (
-                  <Text className="text-[9px] uppercase font-bold text-slate-400 mt-1.5 self-start bg-slate-100 px-1 py-0.5 rounded">
+                  <Text className="text-[10px] uppercase font-bold text-slate-400 mt-1.5 self-start bg-slate-100 px-1 py-0.5 rounded">
                     {item.creator_role}
                   </Text>
                 )}
@@ -845,6 +830,8 @@ export default function GroupsScreen() {
         <FlatList
           data={groups.filter(g => 
             g.type === 'public' && 
+            !myGroupIds.has(g.id) &&
+            g.created_by !== userId &&
             g.name.toLowerCase().includes(searchQuery.toLowerCase())
           )}
           keyExtractor={(item) => item.id}
@@ -866,7 +853,7 @@ export default function GroupsScreen() {
               </View>
               <Pressable
                 onPress={() => handleJoinGroup(item)}
-                className="bg-emerald-500 px-4 py-2 rounded-lg items-center justify-center active:bg-emerald-600"
+                className="bg-blue-500 px-4 py-2 rounded-lg items-center justify-center active:bg-blue-600"
               >
                 <Text className="text-white font-bold text-xs">Join</Text>
               </Pressable>
@@ -888,7 +875,7 @@ export default function GroupsScreen() {
         animationType="slide"
         onRequestClose={() => setCreateVisible(false)}
       >
-        <View className="flex-1 bg-canvas">
+        <View className="flex-1 bg-slate-50">
           <View className="flex-row items-center justify-between border-b border-slate-100 bg-white px-4 py-4">
             <Text className="text-lg font-bold text-slate-900">Create Group</Text>
             <Pressable onPress={() => setCreateVisible(false)} className="p-1">
@@ -898,7 +885,7 @@ export default function GroupsScreen() {
 
           <ScrollView className="p-4 space-y-4">
             <View className="space-y-1.5">
-              <Text className="text-slate-750 text-sm font-semibold">Group Name</Text>
+              <Text className="text-slate-700 text-sm font-semibold">Group Name</Text>
               <TextInput
                 className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800 text-base"
                 placeholder="E.g., Science Study Group"
@@ -908,7 +895,7 @@ export default function GroupsScreen() {
             </View>
 
             <View className="space-y-1.5">
-              <Text className="text-slate-750 text-sm font-semibold">Description</Text>
+              <Text className="text-slate-700 text-sm font-semibold">Description</Text>
               <TextInput
                 className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800 text-base"
                 placeholder="Briefly describe the purpose of this group..."
@@ -920,7 +907,7 @@ export default function GroupsScreen() {
             </View>
 
             <View className="space-y-1.5">
-              <Text className="text-slate-750 text-sm font-semibold">Type</Text>
+              <Text className="text-slate-700 text-sm font-semibold">Type</Text>
               <View className="flex-row gap-2 bg-slate-100 p-1 rounded-xl">
                 <Pressable
                   onPress={() => setGType('public')}
@@ -942,7 +929,7 @@ export default function GroupsScreen() {
             </View>
 
             <View className="space-y-1.5">
-              <Text className="text-slate-750 text-sm font-semibold">Membership Rules (Optional)</Text>
+              <Text className="text-slate-700 text-sm font-semibold">Membership Rules (Optional)</Text>
               <TextInput
                 className="bg-white border border-slate-200 rounded-xl px-4 py-3 text-slate-800 text-base"
                 placeholder="E.g., Open to Grade 10 students only."
@@ -954,7 +941,7 @@ export default function GroupsScreen() {
             <Pressable
               disabled={sending || !gName.trim()}
               onPress={handleCreateGroup}
-              className="w-full bg-emerald-500 rounded-xl py-3.5 items-center justify-center active:bg-emerald-600 disabled:opacity-50 mt-6"
+              className="w-full bg-blue-500 rounded-xl py-3.5 items-center justify-center active:bg-blue-600 disabled:opacity-50 mt-6"
             >
               {sending ? (
                 <ActivityIndicator size="small" color="#fff" />

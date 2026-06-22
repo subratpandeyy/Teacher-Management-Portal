@@ -96,14 +96,14 @@ export default function CoordinatorWork() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
 
   return (
-    <ScrollView className="flex-1 bg-canvas p-4" contentContainerStyle={{ paddingBottom: 60 }}>
+    <ScrollView className="flex-1 bg-slate-50 p-4" contentContainerStyle={{ paddingBottom: 60 }}>
       {/* Header */}
       <View className="mb-4">
         <Text className="text-2xl font-bold text-slate-900">Work Tracking</Text>
@@ -169,7 +169,7 @@ export default function CoordinatorWork() {
             onPress={handleSubmitReport}
             disabled={submitting}
             className={`py-3.5 rounded-xl items-center shadow-sm ${
-              submitting ? 'bg-slate-300' : 'bg-emerald-500'
+              submitting ? 'bg-slate-300' : 'bg-blue-500'
             }`}
           >
             {submitting ? (

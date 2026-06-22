@@ -60,13 +60,13 @@ export function Picker({ label, options, selectedValue, onValueChange, placehold
                         setModalVisible(false);
                       }}
                       className={`flex-row justify-between items-center p-4 rounded-xl mb-2 ${
-                        isSelected ? 'bg-emerald-50' : 'active:bg-slate-50'
+                        isSelected ? 'bg-blue-50' : 'active:bg-slate-50'
                       }`}
                     >
-                      <Text className={`text-sm ${isSelected ? 'text-emerald-700 font-bold' : 'text-slate-700'}`}>
+                      <Text className={`text-sm ${isSelected ? 'text-blue-700 font-bold' : 'text-slate-700'}`}>
                         {item.label}
                       </Text>
-                      {isSelected && <Feather name="check" size={18} color="#10B981" />}
+                      {isSelected && <Feather name="check" size={18} color="#3B82F6" />}
                     </Pressable>
                   );
                 }}

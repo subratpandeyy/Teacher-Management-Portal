@@ -379,7 +379,7 @@ body {
   }
 
   .chat-sidebar {
-    @apply flex w-80 shrink-0 flex-col border-r border-gray-100;
+    @apply flex w-full flex-col border-r border-gray-100;
   }
 
   .chat-main {
@@ -411,5 +411,77 @@ body {
   }
   .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     @apply bg-gray-300;
+  }
+}
+
+/* ── Mobile Responsive Overrides ──────────────── */
+@media (max-width: 768px) {
+  /* Chat container: taller on mobile since there's less chrome */
+  .chat-container {
+    height: calc(100vh - 10rem);
+    min-height: 320px;
+    border-radius: 0.75rem;
+  }
+
+  /* Chat sidebar: full width on mobile */
+  .chat-sidebar {
+    width: 100%;
+    flex-shrink: 0;
+  }
+
+  /* Chat messages: slightly tighter padding on mobile */
+  .chat-message-me,
+  .chat-message-other {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+  }
+
+  /* Page container: reduce side padding on small screens */
+  .page-container {
+    padding-left: 0.75rem;
+    padding-right: 0.75rem;
+  }
+
+  /* Page header: reduce bottom margin */
+  .page-header {
+    margin-bottom: 1rem;
+  }
+
+  /* Modal: full-width on mobile with small margin */
+  .modal {
+    max-width: calc(100vw - 2rem);
+  }
+
+  /* Task cards: ensure full-width stacking */
+  .card {
+    border-radius: 0.75rem;
+  }
+
+  .card-body {
+    padding: 0.75rem;
+  }
+
+  /* Tables: reduce cell padding on mobile */
+  .table thead th,
+  .table tbody td {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+  }
+
+  /* Stat cards: compact on mobile */
+  .stat-card {
+    padding: 0.75rem;
+  }
+
+  .stat-card-value {
+    font-size: 1.25rem;
+  }
+}
+
+/* ── Chat layout: md+ sidebar width ──────────── */
+@media (min-width: 769px) {
+  .chat-sidebar {
+    width: 20rem; /* w-80 equivalent */
+    flex-shrink: 0;
   }
 }

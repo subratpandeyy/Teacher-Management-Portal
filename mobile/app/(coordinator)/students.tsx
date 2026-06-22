@@ -185,8 +185,8 @@ export default function CoordinatorStudents() {
 
   if (loading) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
@@ -196,7 +196,7 @@ export default function CoordinatorStudents() {
     const rate = attendanceRecords.length > 0 ? Math.round((presentCount / attendanceRecords.length) * 100) : 0;
     
     return (
-      <ScrollView className="flex-1 bg-canvas p-4">
+      <ScrollView className="flex-1 bg-slate-50 p-4">
         {/* Back header */}
         <Pressable 
           onPress={() => setSelectedStudent(null)} 
@@ -224,7 +224,7 @@ export default function CoordinatorStudents() {
 
         {detailLoading ? (
           <View className="py-12 items-center justify-center">
-            <ActivityIndicator size="large" color="#10B981" />
+            <ActivityIndicator size="large" color="#2563EB" />
           </View>
         ) : (
           <View className="space-y-6 mt-6 pb-12">
@@ -271,7 +271,7 @@ export default function CoordinatorStudents() {
                       />
                       <Pressable 
                         onPress={handleAssignTeacher}
-                        className="bg-emerald-500 px-4 h-11 items-center justify-center rounded-xl"
+                        className="bg-blue-500 px-4 h-11 items-center justify-center rounded-xl"
                       >
                         <Text className="text-white font-bold text-sm">Assign</Text>
                       </Pressable>
@@ -292,7 +292,7 @@ export default function CoordinatorStudents() {
                     <View key={rec.id} className="flex-row items-center justify-between border-b border-slate-50 py-2">
                       <Text className="text-sm text-slate-700">{rec.date}</Text>
                       <View className={`px-2.5 py-0.5 rounded-full ${
-                        rec.status === 'present' ? 'bg-emerald-100 text-emerald-800' :
+                        rec.status === 'present' ? 'bg-blue-100 text-blue-800' :
                         rec.status === 'late' ? 'bg-amber-100 text-amber-800' :
                         'bg-rose-100 text-rose-800'
                       }`}>
@@ -330,7 +330,7 @@ export default function CoordinatorStudents() {
   }
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1 bg-slate-50">
       {/* Search Header */}
       <View className="bg-white px-4 pt-3 pb-4 border-b border-slate-100">
         <Text className="text-lg font-bold text-slate-900 mb-3">Student Directory</Text>

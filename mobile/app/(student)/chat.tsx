@@ -9,12 +9,13 @@ import {
   Text,
   TextInput,
   View,
-  ActivityIndicator
+  ActivityIndicator,
 } from 'react-native';
 import { useAuth } from '../../lib/auth';
 import { supabase } from '../../lib/supabase';
 import { markConversationRead } from '../../lib/chatService';
 import { useUnreadMessagesContext } from '../../lib/UnreadMessagesContext';
+import { Card } from '../../components/ui/Card';
 
 export default function StudentChat() {
   const { profile } = useAuth();
@@ -24,7 +25,6 @@ export default function StudentChat() {
   const [selectedRecipient, setSelectedRecipient] = useState<any | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Chat window state
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<any[]>([]);
   const [text, setText] = useState('');
@@ -33,7 +33,6 @@ export default function StudentChat() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const listRef = useRef<FlatList>(null);
 
-  // Load assigned coordinator(s) as chat targets
   const fetchChatTargets = useCallback(async () => {
     if (!profile) return;
     try {
@@ -107,7 +106,7 @@ export default function StudentChat() {
     try {
       const { data: convId, error } = await supabase.rpc('ensure_direct_conversation', {
         p_user_a: profile!.id,
-        p_user_b: recipient.id
+        p_user_b: recipient.id,
       });
 
       if (error) throw error;
@@ -143,11 +142,11 @@ export default function StudentChat() {
           event: '*',
           schema: 'public',
           table: 'chat_messages',
-          filter: `conversation_id=eq.${conversationId}`
+          filter: `conversation_id=eq.${conversationId}`,
         },
         () => {
           if (loadMessagesRef.current) void loadMessagesRef.current(conversationId);
-        }
+        },
       )
       .subscribe((status) => {
         console.log(`Channel ${channelName} status:`, status);
@@ -181,7 +180,7 @@ export default function StudentChat() {
           .insert({
             conversation_id: conversationId,
             sender_id: profile.id,
-            body: trimmed
+            body: trimmed,
           });
 
         if (error) throw error;
@@ -203,7 +202,7 @@ export default function StudentChat() {
         onPress: () => {
           setEditingId(msg.id);
           setText(msg.body);
-        }
+        },
       },
       {
         text: 'Delete',
@@ -221,39 +220,38 @@ export default function StudentChat() {
           } catch (err: any) {
             Alert.alert('Error deleting message', err?.message);
           }
-        }
+        },
       },
-      { text: 'Cancel', style: 'cancel' }
+      { text: 'Cancel', style: 'cancel' },
     ]);
   };
 
   if (loadingChannels) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator size="large" color="#3B82F6" />
       </View>
     );
   }
 
   if (channels.length === 0 && !loadingChannels) {
     return (
-      <View className="flex-1 bg-canvas items-center justify-center p-8">
-        <View className="h-16 w-16 items-center justify-center rounded-full bg-slate-100 mb-4">
-          <Feather name="message-circle" size={28} color="#94A3B8" />
+      <View className="flex-1 items-center justify-center bg-slate-50 p-8">
+        <View className="mb-4 h-16 w-16 items-center justify-center rounded-2xl bg-blue-50">
+          <Feather name="message-circle" size={28} color="#3B82F6" />
         </View>
-        <Text className="text-lg font-bold text-slate-900 text-center">No Coordinator Assigned</Text>
-        <Text className="text-sm text-slate-500 text-center mt-2 leading-5">
+        <Text className="text-center text-lg font-bold text-slate-900">No Coordinator Assigned</Text>
+        <Text className="mt-2 text-center text-sm leading-5 text-slate-500">
           You don't have a coordinator assigned yet. Please contact your administrator.
         </Text>
       </View>
     );
   }
 
-  // Selected recipient - Render Chat Interface
   if (selectedRecipient) {
     return (
       <KeyboardAvoidingView
-        className="flex-1 bg-canvas"
+        className="flex-1 bg-slate-50"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
       >
@@ -267,21 +265,21 @@ export default function StudentChat() {
             className="flex-row items-center gap-2"
           >
             <Feather name="arrow-left" size={20} color="#475569" />
-            <View className="h-9 w-9 items-center justify-center rounded-full bg-blue-50">
-              <Text className="text-blue-600 font-bold text-base">
+            <View className="h-10 w-10 items-center justify-center rounded-full bg-blue-100">
+              <Text className="text-base font-bold text-blue-600">
                 {selectedRecipient.display_name?.charAt(0).toUpperCase()}
               </Text>
             </View>
             <View>
-              <Text className="font-bold text-slate-900 text-sm">{selectedRecipient.display_name}</Text>
+              <Text className="text-sm font-bold text-slate-900">{selectedRecipient.display_name}</Text>
               <Text className="text-xs text-slate-500 capitalize">{selectedRecipient.role}</Text>
             </View>
           </Pressable>
         </View>
 
         {loadingMessages ? (
-          <View className="flex-grow justify-center items-center">
-            <ActivityIndicator size="large" color="#10B981" />
+          <View className="flex-1 justify-center items-center">
+            <ActivityIndicator size="large" color="#3B82F6" />
           </View>
         ) : (
           <FlatList
@@ -298,24 +296,26 @@ export default function StudentChat() {
                 <Pressable
                   onLongPress={() => !deleted && handleLongPress(item)}
                   className={`mb-3 max-w-[80%] p-3.5 rounded-2xl ${
-                    isMine ? 'self-end bg-emerald-500 rounded-tr-none' : 'self-start bg-white border border-slate-100 rounded-tl-none'
+                    isMine
+                      ? 'self-end bg-blue-500 rounded-tr-none'
+                      : 'self-start bg-white border border-slate-100 rounded-tl-none'
                   } ${deleted ? 'opacity-60' : ''}`}
                 >
                   {!isMine && !deleted && (
-                    <Text className="text-[10px] font-bold text-slate-400 mb-1">
+                    <Text className="mb-1 text-xs font-bold text-slate-400">
                       [{item.sender?.role?.toUpperCase()}] {item.sender?.display_name}
                     </Text>
                   )}
                   {deleted ? (
-                    <Text className={`text-sm italic ${isMine ? 'text-emerald-100' : 'text-slate-500'}`}>
+                    <Text className={`text-sm italic ${isMine ? 'text-blue-100' : 'text-slate-500'}`}>
                       Message deleted
                     </Text>
                   ) : (
-                    <Text className={`text-sm ${isMine ? 'text-white font-medium' : 'text-slate-800'}`}>
+                    <Text className={`text-sm ${isMine ? 'font-medium text-white' : 'text-slate-800'}`}>
                       {item.body}
                     </Text>
                   )}
-                  <Text className={`text-[8px] text-right mt-1.5 ${isMine ? 'text-emerald-100' : 'text-slate-400'}`}>
+                  <Text className={`mt-1.5 text-right text-[10px] ${isMine ? 'text-blue-100' : 'text-slate-400'}`}>
                     {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     {isEdited ? ' · edited' : ''}
                   </Text>
@@ -323,9 +323,11 @@ export default function StudentChat() {
               );
             }}
             ListEmptyComponent={
-              <View className="flex-grow items-center justify-center py-20">
-                <Feather name="message-circle" size={48} color="#CBD5E1" />
-                <Text className="text-slate-400 text-sm mt-3 font-medium">No messages. Say hello!</Text>
+              <View className="flex-1 items-center justify-center py-20">
+                <View className="mb-3 h-14 w-14 items-center justify-center rounded-2xl bg-blue-50">
+                  <Feather name="message-circle" size={28} color="#3B82F6" />
+                </View>
+                <Text className="text-sm font-medium text-slate-400">No messages. Say hello!</Text>
               </View>
             }
           />
@@ -342,14 +344,14 @@ export default function StudentChat() {
             value={text}
             onChangeText={setText}
             placeholderTextColor="#94A3B8"
-            className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 text-slate-800 text-sm max-h-24"
+            className="flex-1 max-h-24 rounded-xl border border-slate-200 bg-slate-50 px-4 py-2 text-sm text-slate-800"
             multiline
           />
           <Pressable
             onPress={handleSend}
             disabled={sending || !text.trim()}
-            className={`h-10 w-10 rounded-xl items-center justify-center ${
-              !text.trim() ? 'bg-slate-100' : 'bg-emerald-500'
+            className={`h-10 w-10 items-center justify-center rounded-xl ${
+              !text.trim() ? 'bg-slate-100' : 'bg-blue-500 active:bg-blue-600'
             }`}
           >
             <Feather name={editingId ? 'check' : 'send'} size={18} color={!text.trim() ? '#94A3B8' : 'white'} />
@@ -359,12 +361,11 @@ export default function StudentChat() {
     );
   }
 
-  // Recipients List
   return (
-    <View className="flex-1 bg-canvas p-4">
+    <View className="flex-1 bg-slate-50 p-4">
       <View className="mb-4">
         <Text className="text-2xl font-bold text-slate-900">My Coordinator</Text>
-        <Text className="text-slate-500 text-sm">Chat with your assigned coordinator</Text>
+        <Text className="mt-0.5 text-sm text-slate-500">Chat with your assigned coordinator</Text>
       </View>
 
       <FlatList
@@ -373,26 +374,35 @@ export default function StudentChat() {
         renderItem={({ item }) => (
           <Pressable
             onPress={() => handleSelectRecipient(item)}
-            className="flex-row items-center justify-between bg-white p-4 rounded-2xl mb-3 border border-slate-100 shadow-sm"
+            className="mb-3 flex-row items-center justify-between rounded-2xl border border-slate-100 bg-white p-4 active:bg-slate-50"
+            style={{
+              shadowColor: '#000',
+              shadowOpacity: 0.05,
+              shadowRadius: 6,
+              shadowOffset: { width: 0, height: 2 },
+              elevation: 2,
+            }}
           >
             <View className="flex-row items-center gap-3">
-              <View className="h-12 w-12 rounded-full items-center justify-center bg-emerald-50">
-                <Text className="font-bold text-lg text-emerald-600">
+              <View className="h-12 w-12 items-center justify-center rounded-full bg-blue-100">
+                <Text className="text-lg font-bold text-blue-600">
                   {item.display_name?.charAt(0).toUpperCase()}
                 </Text>
               </View>
               <View>
-                <Text className="font-bold text-slate-900 text-sm">{item.display_name}</Text>
-                <Text className="text-xs text-slate-400 capitalize">{item.role}</Text>
+                <Text className="text-sm font-bold text-slate-900">{item.display_name}</Text>
+                <Text className="text-xs capitalize text-slate-400">{item.role}</Text>
               </View>
             </View>
-            <Feather name="message-square" size={18} color="#10B981" />
+            <Feather name="message-square" size={18} color="#3B82F6" />
           </Pressable>
         )}
         ListEmptyComponent={
-          <View className="py-20 items-center justify-center">
-            <Feather name="users" size={48} color="#CBD5E1" />
-            <Text className="text-slate-400 text-sm mt-3 font-medium">No contacts found</Text>
+          <View className="items-center justify-center py-20">
+            <View className="mb-3 h-14 w-14 items-center justify-center rounded-2xl bg-blue-50">
+              <Feather name="users" size={28} color="#3B82F6" />
+            </View>
+            <Text className="text-sm font-medium text-slate-400">No contacts found</Text>
           </View>
         }
       />

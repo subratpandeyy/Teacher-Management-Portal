@@ -1,7 +1,16 @@
 import { Feather } from '@expo/vector-icons';
-import { Platform, Text, TouchableOpacity, View } from 'react-native';
-import { useState } from 'react';
-import { Slot, useRouter, usePathname } from 'expo-router';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import {
+  Animated,
+  BackHandler,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { Slot, usePathname, useRouter } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { AppHeader } from './AppHeader';
 import { Logo } from './Logo';
 
@@ -19,87 +28,209 @@ interface DrawerLayoutProps {
   activeTextColor?: string;
 }
 
+const DRAWER_WIDTH = 280;
+const ANIM_DURATION = 250;
+
 export function DrawerLayout({
   menuItems,
   sidebarTitle,
-  accentColor = '#475569',
+  accentColor = '#3B82F6',
   activeBgColor = '#EFF6FF',
   activeTextColor = '#2563EB',
 }: DrawerLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const router = useRouter();
   const pathname = usePathname();
+  const insets = useSafeAreaInsets();
+  const slideAnim = useRef(new Animated.Value(-DRAWER_WIDTH)).current;
+  const backdropAnim = useRef(new Animated.Value(0)).current;
+
+  const toggleDrawer = useCallback(() => {
+    setSidebarOpen((prev) => !prev);
+  }, []);
+
+  const closeDrawer = useCallback(() => {
+    setSidebarOpen(false);
+  }, []);
+
+  useEffect(() => {
+    if (sidebarOpen) {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: ANIM_DURATION,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropAnim, {
+          toValue: 1,
+          duration: ANIM_DURATION - 50,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: -DRAWER_WIDTH,
+          duration: ANIM_DURATION - 50,
+          useNativeDriver: true,
+        }),
+        Animated.timing(backdropAnim, {
+          toValue: 0,
+          duration: ANIM_DURATION - 50,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [sidebarOpen, slideAnim, backdropAnim]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (sidebarOpen) {
+        closeDrawer();
+        return true;
+      }
+      return false;
+    });
+    return () => backHandler.remove();
+  }, [sidebarOpen, closeDrawer]);
+
+  const isActive = useCallback(
+    (route: string) => {
+      const norm = (p: string) => p.replace(/\/+/g, '/').replace(/\/$/, '');
+      return norm(pathname) === norm(route);
+    },
+    [pathname],
+  );
+
+  const handleNavigate = useCallback(
+    (route: string) => {
+      router.push(route as any);
+      closeDrawer();
+    },
+    [router, closeDrawer],
+  );
 
   return (
-    <View className="flex-1">
+    <View className="flex-1 bg-slate-50">
       <AppHeader />
 
-      <TouchableOpacity
-        onPress={() => setSidebarOpen(!sidebarOpen)}
-        className="absolute right-4 z-50 rounded-xl border border-slate-200 bg-white p-2"
-        style={{ top: Platform.OS === 'ios' ? 60 : 20 }}
+      <View className="flex-1">
+        <Slot />
+      </View>
+
+      <Pressable
+        onPress={toggleDrawer}
+        accessibilityLabel={sidebarOpen ? 'Close navigation menu' : 'Open navigation menu'}
+        accessibilityRole="button"
+        className="absolute z-50 rounded-xl border border-slate-200 bg-white active:bg-slate-50"
+        style={{
+          top: insets.top + 8,
+          right: 12,
+          padding: Platform.OS === 'ios' ? 10 : 12,
+          shadowColor: '#000',
+          shadowOpacity: 0.08,
+          shadowRadius: 6,
+          shadowOffset: { width: 0, height: 2 },
+          elevation: 4,
+        }}
+        hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
       >
         <Feather
           name={sidebarOpen ? 'x' : 'menu'}
           size={24}
           color={accentColor}
         />
-      </TouchableOpacity>
+      </Pressable>
 
-      {sidebarOpen && (
-        <View
-          className="absolute left-0 top-0 z-40 h-full w-64 bg-white pt-[120px]"
-          style={{ elevation: 12, shadowColor: '#000', shadowOpacity: 0.15, shadowRadius: 12, shadowOffset: { width: 0, height: 4 } }}
-        >
-          <View className="mb-3 items-center justify-center border-b border-slate-100 pb-6">
-            <Logo size={80} />
-            {sidebarTitle && (
-              <Text className="mt-2 text-base font-bold text-slate-900">{sidebarTitle}</Text>
-            )}
-          </View>
+      <Animated.View
+        className="absolute left-0 top-0 z-40 h-full bg-white"
+        style={{
+          width: DRAWER_WIDTH,
+          paddingTop: insets.top,
+          transform: [{ translateX: slideAnim }],
+          elevation: 16,
+          shadowColor: '#000',
+          shadowOpacity: 0.18,
+          shadowRadius: 20,
+          shadowOffset: { width: 2, height: 4 },
+        }}
+      >
+        <View className="mb-2 mt-4 items-center justify-center border-b border-slate-100 pb-6">
+          <Logo size={72} />
+          {sidebarTitle && (
+            <Text className="mt-2 text-base font-bold text-slate-900">
+              {sidebarTitle}
+            </Text>
+          )}
+        </View>
 
+        <View className="flex-1 px-3">
           {menuItems.map((item) => {
-            const active = pathname.includes(item.route.split('/').pop() || '');
-
+            const active = isActive(item.route);
             return (
-              <TouchableOpacity
+              <Pressable
                 key={item.route}
-                onPress={() => {
-                  router.push(item.route as any);
-                  setSidebarOpen(false);
+                onPress={() => handleNavigate(item.route)}
+                accessibilityLabel={item.label}
+                accessibilityRole="button"
+                accessibilityState={{ selected: active }}
+                className="mb-1 flex-row items-center rounded-xl px-3 py-3.5 active:opacity-80"
+                style={{
+                  backgroundColor: active ? activeBgColor : 'transparent',
                 }}
-                className="flex-row items-center px-5 py-4"
-                style={{ backgroundColor: active ? activeBgColor : 'transparent' }}
               >
-                <Feather
-                  name={item.icon}
-                  size={20}
-                  color={active ? activeTextColor : '#64748B'}
-                />
+                <View
+                  className="h-9 w-9 items-center justify-center rounded-lg"
+                  style={{
+                    backgroundColor: active
+                      ? activeTextColor + '15'
+                      : 'transparent',
+                  }}
+                >
+                  <Feather
+                    name={item.icon}
+                    size={20}
+                    color={active ? activeTextColor : '#64748B'}
+                  />
+                </View>
                 <Text
-                  className="ml-3 text-base"
-                  style={{ color: active ? activeTextColor : '#334155', fontWeight: active ? '600' : '400' }}
+                  className="ml-3 text-[15px]"
+                  style={{
+                    color: active ? activeTextColor : '#334155',
+                    fontWeight: active ? '600' : '400',
+                  }}
                 >
                   {item.label}
                 </Text>
-              </TouchableOpacity>
+                {active && (
+                  <View
+                    className="ml-auto h-2 w-2 rounded-full"
+                    style={{ backgroundColor: activeTextColor }}
+                  />
+                )}
+              </Pressable>
             );
           })}
         </View>
-      )}
+      </Animated.View>
 
-      {sidebarOpen && (
-        <TouchableOpacity
-          activeOpacity={1}
-          onPress={() => setSidebarOpen(false)}
-          className="absolute inset-0 z-30 bg-black/25"
-          style={{ left: 260 }}
+      <Animated.View
+        pointerEvents={sidebarOpen ? 'auto' : 'none'}
+        style={[
+          { opacity: backdropAnim },
+          StyleSheet.absoluteFill,
+          { zIndex: 30 },
+        ]}
+      >
+        <Pressable
+          onPress={closeDrawer}
+          accessibilityLabel="Close navigation menu"
+          accessibilityRole="button"
+          className="bg-black/40"
+          style={{ marginLeft: DRAWER_WIDTH, flex: 1 }}
         />
-      )}
-
-      <View className="flex-1">
-        <Slot />
-      </View>
+      </Animated.View>
     </View>
   );
 }

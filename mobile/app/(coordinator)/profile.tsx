@@ -7,11 +7,11 @@ export default function ProfileScreen() {
   const { user, profile, signOut } = useAuth();
 
   return (
-    <View className="flex-1 bg-canvas">
+    <View className="flex-1 bg-slate-50">
       <View className="px-4 pt-4">
         <Card className="items-center">
-          <View className="mb-3 h-20 w-20 items-center justify-center rounded-full bg-emerald-100">
-            <Text className="text-3xl font-bold text-emerald-700">
+          <View className="mb-3 h-20 w-20 items-center justify-center rounded-full bg-blue-100">
+            <Text className="text-3xl font-bold text-blue-700">
               {(profile?.display_name ?? user?.email ?? 'C').charAt(0).toUpperCase()}
             </Text>
           </View>
@@ -19,8 +19,8 @@ export default function ProfileScreen() {
             {profile?.display_name ?? 'Coordinator'}
           </Text>
           <Text className="mt-1 text-sm text-slate-500">{user?.email}</Text>
-          <View className="mt-3 rounded-full bg-emerald-50 px-3 py-1">
-            <Text className="text-xs font-semibold uppercase tracking-wide text-emerald-600">
+          <View className="mt-3 rounded-full bg-blue-50 px-3 py-1">
+            <Text className="text-xs font-semibold uppercase tracking-wide text-blue-600">
               Coordinator account
             </Text>
           </View>
@@ -35,7 +35,7 @@ export default function ProfileScreen() {
             </View>
           </View>
           <View className="flex-row items-center gap-3 rounded-2xl border border-slate-100 bg-white px-4 py-3">
-            <Feather name="user" size={18} color="#22C55E" />
+            <Feather name="user" size={18} color="#3B82F6" />
             <View className="flex-1">
               <Text className="text-xs text-slate-500">Display name</Text>
               <Text className="text-sm font-medium text-slate-800">

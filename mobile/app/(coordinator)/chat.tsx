@@ -262,8 +262,8 @@ export default function CoordinatorChat() {
 
   if (loadingChannels) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas">
-        <ActivityIndicator size="large" color="#10B981" />
+      <View className="flex-1 items-center justify-center bg-slate-50">
+        <ActivityIndicator size="large" color="#2563EB" />
       </View>
     );
   }
@@ -272,7 +272,7 @@ export default function CoordinatorChat() {
   if (selectedRecipient) {
     return (
       <KeyboardAvoidingView
-        className="flex-1 bg-canvas"
+        className="flex-1 bg-slate-50"
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 0}
       >
@@ -302,7 +302,7 @@ export default function CoordinatorChat() {
         {/* Message List */}
         {loadingMessages ? (
           <View className="flex-grow justify-center items-center">
-            <ActivityIndicator size="large" color="#10B981" />
+            <ActivityIndicator size="large" color="#2563EB" />
           </View>
         ) : (
           <FlatList
@@ -319,16 +319,16 @@ export default function CoordinatorChat() {
                 <Pressable
                   onLongPress={() => !deleted && handleLongPress(item)}
                   className={`mb-3 max-w-[80%] p-3.5 rounded-2xl ${
-                    isMine ? 'self-end bg-emerald-500 rounded-tr-none' : 'self-start bg-white border border-slate-100 rounded-tl-none'
+                    isMine ? 'self-end bg-blue-500 rounded-tr-none' : 'self-start bg-white border border-slate-100 rounded-tl-none'
                   } ${deleted ? 'opacity-60' : ''}`}
                 >
                   {!isMine && !deleted && (
-                    <Text className="text-[10px] font-bold text-slate-400 mb-1">
+                    <Text className="text-xs font-bold text-slate-400 mb-1">
                       [{item.sender?.role?.toUpperCase()}] {item.sender?.display_name}
                     </Text>
                   )}
                   {deleted ? (
-                    <Text className={`text-sm italic ${isMine ? 'text-emerald-100' : 'text-slate-500'}`}>
+                    <Text className={`text-sm italic ${isMine ? 'text-blue-100' : 'text-slate-500'}`}>
                       Message deleted
                     </Text>
                   ) : (
@@ -336,7 +336,7 @@ export default function CoordinatorChat() {
                       {item.body}
                     </Text>
                   )}
-                  <Text className={`text-[8px] text-right mt-1.5 ${isMine ? 'text-emerald-100' : 'text-slate-400'}`}>
+                  <Text className={`text-[10px] text-right mt-1.5 ${isMine ? 'text-blue-100' : 'text-slate-400'}`}>
                     {new Date(item.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     {isEdited ? ' · edited' : ''}
                   </Text>
@@ -371,7 +371,7 @@ export default function CoordinatorChat() {
             onPress={handleSend}
             disabled={sending || !text.trim()}
             className={`h-10 w-10 rounded-xl items-center justify-center ${
-              !text.trim() ? 'bg-slate-100' : 'bg-emerald-500'
+              !text.trim() ? 'bg-slate-100' : 'bg-blue-500'
             }`}
           >
             <Feather name={editingId ? 'check' : 'send'} size={18} color={!text.trim() ? '#94A3B8' : 'white'} />
@@ -383,7 +383,7 @@ export default function CoordinatorChat() {
 
   // Recipients List - Default view
   return (
-    <View className="flex-1 bg-canvas p-4">
+    <View className="flex-1 bg-slate-50 p-4">
       <View className="mb-4">
         <Text className="text-2xl font-bold text-slate-900">Conversations</Text>
         <Text className="text-slate-500 text-sm">Chat with admins, teachers, and students</Text>
@@ -399,10 +399,10 @@ export default function CoordinatorChat() {
           >
             <View className="flex-row items-center gap-3">
               <View className={`h-12 w-12 rounded-full items-center justify-center ${
-                item.role === 'admin' ? 'bg-rose-50' : item.role === 'teacher' ? 'bg-emerald-50' : 'bg-blue-50'
+                item.role === 'admin' ? 'bg-rose-50' : item.role === 'teacher' ? 'bg-blue-50' : 'bg-blue-50'
               }`}>
                 <Text className={`font-bold text-lg ${
-                  item.role === 'admin' ? 'text-rose-600' : item.role === 'teacher' ? 'text-emerald-600' : 'text-blue-600'
+                  item.role === 'admin' ? 'text-rose-600' : item.role === 'teacher' ? 'text-blue-600' : 'text-blue-600'
                 }`}>
                   {item.display_name?.charAt(0).toUpperCase()}
                 </Text>
@@ -412,7 +412,7 @@ export default function CoordinatorChat() {
                 <Text className="text-xs text-slate-400 capitalize">{item.role}</Text>
               </View>
             </View>
-            <Feather name="message-square" size={18} color="#10B981" />
+            <Feather name="message-square" size={18} color="#2563EB" />
           </Pressable>
         )}
         ListEmptyComponent={
